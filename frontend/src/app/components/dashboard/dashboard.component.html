@@ -1,0 +1,443 @@
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--                    ADMIN & STAFF DASHBOARD VIEW               -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="admin-dashboard-view" *ngIf="!isCustomer">
+  <!-- Top Welcome & Actions -->
+  <div class="dash-header">
+    <div class="dash-welcome">
+      <h1>Trung tâm Quản trị Resort</h1>
+      <p>Tổng quan hoạt động kinh doanh, tình trạng phòng và theo dõi lượt đặt phòng hôm nay.</p>
+    </div>
+    <div class="dash-quick-actions">
+      <a routerLink="/rooms/new" class="btn btn-gold">+ Thêm phòng mới</a>
+      <a routerLink="/bookings/new" class="btn btn-secondary">+ Tạo đơn đặt phòng</a>
+    </div>
+  </div>
+
+  <!-- Statistics Grid -->
+  <div class="stats-grid">
+    <div class="stat-card stat-rooms">
+      <div class="stat-icon-wrapper">🛏️</div>
+      <div class="stat-content">
+        <span class="stat-label">Tổng số phòng</span>
+        <span class="stat-value">{{ roomCount }}</span>
+        <span class="stat-sub">Đang hoạt động trên hệ thống</span>
+      </div>
+    </div>
+
+    <div class="stat-card stat-bookings">
+      <div class="stat-icon-wrapper">📋</div>
+      <div class="stat-content">
+        <span class="stat-label">Lượt đặt phòng</span>
+        <span class="stat-value">{{ bookingCount }}</span>
+        <span class="stat-sub">Tổng số lượt đặt ghi nhận</span>
+      </div>
+    </div>
+
+    <div class="stat-card stat-customers">
+      <div class="stat-icon-wrapper">👥</div>
+      <div class="stat-content">
+        <span class="stat-label">Khách hàng</span>
+        <span class="stat-value">{{ customerCount }}</span>
+        <span class="stat-sub">Hồ sơ khách hàng đăng ký</span>
+      </div>
+    </div>
+
+    <div class="stat-card stat-services">
+      <div class="stat-icon-wrapper">🛎️</div>
+      <div class="stat-content">
+        <span class="stat-label">Dịch vụ đi kèm</span>
+        <span class="stat-value">{{ serviceCount }}</span>
+        <span class="stat-sub">Dịch vụ đang cung cấp</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content 2-Column Section -->
+  <div class="admin-content-grid">
+    <!-- Recent Bookings Table -->
+    <div class="dash-card recent-bookings-card">
+      <div class="dash-card-header">
+        <h2>📋 Đơn đặt phòng gần đây</h2>
+        <a routerLink="/bookings" class="view-all-link">Xem tất cả →</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table-modern">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Khách hàng</th>
+              <th>Phòng</th>
+              <th>Ngày nhận phòng</th>
+              <th>Ngày trả phòng</th>
+              <th>Tổng tiền</th>
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let b of recentBookings">
+              <td>#{{ b.id }}</td>
+              <td><strong>{{ b.customerName }}</strong></td>
+              <td>Phòng {{ b.roomNumber }}</td>
+              <td>{{ b.checkInDate | vnDate }}</td>
+              <td>{{ b.checkOutDate | vnDate }}</td>
+              <td class="text-gold font-weight-bold">{{ b.totalPrice | number:'1.0-0' }}₫</td>
+              <td><span class="badge" [class]="b.status">{{ getBookingStatusLabel(b.status) }}</span></td>
+            </tr>
+            <tr *ngIf="recentBookings.length === 0">
+              <td colspan="7" class="text-center text-muted py-4">Chưa có đơn đặt phòng nào.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Quick Room Status Showcase -->
+    <div class="dash-card rooms-preview-card">
+      <div class="dash-card-header">
+        <h2>🛏️ Trạng thái phòng mẫu</h2>
+        <a routerLink="/rooms" class="view-all-link">Quản lý kho phòng →</a>
+      </div>
+      <div class="rooms-preview-list">
+        <div class="room-preview-item" *ngFor="let r of adminRooms">
+          <img [src]="getRoomImg(r.roomTypeName, r.id)" (error)="onImgError($event)" [alt]="r.roomNumber" class="room-preview-thumb">
+          <div class="room-preview-info">
+            <div class="room-preview-title">
+              <strong>Phòng {{ r.roomNumber }}</strong>
+              <span class="room-badge-lite">{{ r.roomTypeName }}</span>
+            </div>
+            <div class="room-preview-meta">
+              <span>{{ r.capacity }} Khách</span> • <span class="text-gold">{{ r.price | number:'1.0-0' }}₫</span>
+            </div>
+          </div>
+          <span class="badge" [class]="r.status">{{ getRoomStatusLabel(r.status) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--                CUSTOMER USER DASHBOARD / HOME VIEW           -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="user-portal-view" *ngIf="isCustomer">
+  <!-- Hero Section -->
+  <section class="hero-section" [style.backgroundImage]="'linear-gradient(rgba(6,16,30,0.75), rgba(6,16,30,0.9)), url(' + heroImage + ')'">
+    <div class="hero-content">
+      <span class="hero-badge">✨ NGHỈ DƯỠNG THƯỢNG HẠNG 5 SAO</span>
+      <h1 class="hero-title">Kỳ Nghỉ Đích Thực Tại <span class="text-gold">Aurora Resort</span></h1>
+      <p class="hero-subtitle">
+        Tọa lạc tại vị trí đắc địa <strong>05 Trần Văn Ơn, Quy Nhơn Nam, Gia Lai</strong>. Tận hưởng không gian sang trọng, view biển tuyệt mỹ cùng dịch vụ đẳng cấp quốc tế 24/7.
+      </p>
+
+      <!-- ══════════════════════════════════════════════════════════ -->
+      <!--       ADVANCED BOOKING SEARCH BAR (BOOKING.COM STYLE)      -->
+      <!-- ══════════════════════════════════════════════════════════ -->
+      <div class="booking-search-container">
+        <div class="search-fields-bar">
+          <!-- 1. Location field -->
+          <div class="search-field location-field">
+            <span class="field-icon">📍</span>
+            <div class="field-inner">
+              <label>Bạn muốn đến đâu?</label>
+              <input 
+                type="text" 
+                [(ngModel)]="searchLocation" 
+                placeholder="05 Trần Văn Ơn, Quy Nhơn, Gia Lai, Loại phòng..."
+              >
+            </div>
+          </div>
+
+          <div class="search-divider"></div>
+
+          <!-- 2. Check-in Date -->
+          <div class="search-field date-field">
+            <span class="field-icon">📅</span>
+            <div class="field-inner">
+              <label>Ngày nhận phòng</label>
+              <input 
+                type="date" 
+                [(ngModel)]="searchCheckIn" 
+                [min]="todayStr" 
+                (change)="onCheckInChange()"
+              >
+              <span class="formatted-date-badge">{{ searchCheckIn | vnDate }}</span>
+            </div>
+          </div>
+
+          <div class="search-divider"></div>
+
+          <!-- 3. Check-out Date -->
+          <div class="search-field date-field">
+            <span class="field-icon">📅</span>
+            <div class="field-inner">
+              <label>Ngày trả phòng</label>
+              <input 
+                type="date" 
+                [(ngModel)]="searchCheckOut" 
+                [min]="minCheckOutStr" 
+                (change)="onCheckOutChange()"
+              >
+              <span class="formatted-date-badge">{{ searchCheckOut | vnDate }}</span>
+            </div>
+          </div>
+
+          <div class="search-divider"></div>
+
+          <!-- 4. Guests Selector -->
+          <div class="search-field guests-field">
+            <span class="field-icon">👥</span>
+            <div class="field-inner">
+              <label>Số lượng khách</label>
+              <div class="guest-stepper">
+                <button type="button" class="stepper-btn" (click)="decrementGuests()" [disabled]="searchGuests <= 1">−</button>
+                <span class="guest-count-text">{{ searchGuests }} khách</span>
+                <button type="button" class="stepper-btn" (click)="incrementGuests()" [disabled]="searchGuests >= 10">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Search Button -->
+          <button class="btn btn-gold btn-booking-search" (click)="performSearch()" [disabled]="isSearching">
+            <span *ngIf="!isSearching">🔍 Tìm kiếm</span>
+            <span *ngIf="isSearching">⏳ Đang tìm...</span>
+          </button>
+        </div>
+
+        <!-- Search Validation Error Alert -->
+        <div class="search-alert" *ngIf="searchValidationError">
+          ⚠️ {{ searchValidationError }}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured / Available Rooms Section -->
+  <section class="rooms-section" id="rooms-results-section">
+    <div class="section-header">
+      <div>
+        <span class="section-tag">KHO PHÒNG NGHỈ DƯỠNG</span>
+        <h2>Phòng Nghỉ & Suite Sang Trọng</h2>
+        <p *ngIf="!hasSearched">Danh sách các phòng nghỉ tiện nghi chuẩn 5 sao tại Aurora Resort (05 Trần Văn Ơn, Quy Nhơn Nam, Gia Lai).</p>
+        <p *ngIf="hasSearched" class="search-active-hint">
+          Kết quả tìm kiếm cho: <strong>{{ searchLocation }}</strong> • Nhận phòng: <strong>{{ searchCheckIn | vnDate }}</strong> • Trả phòng: <strong>{{ searchCheckOut | vnDate }}</strong> • Khách: <strong>{{ searchGuests }} người</strong>
+        </p>
+      </div>
+      <div class="rooms-count-box">
+        <span class="rooms-count-tag">
+          Tìm thấy <strong>{{ filteredRooms.length }}</strong> phòng phù hợp
+        </span>
+        <button class="btn btn-secondary btn-sm" *ngIf="hasSearched" (click)="resetSearch()">
+          🔄 Đặt lại bộ lọc
+        </button>
+      </div>
+    </div>
+
+    <!-- Room Cards Grid -->
+    <div class="room-cards-grid" *ngIf="filteredRooms.length > 0">
+      <div class="room-card" *ngFor="let r of filteredRooms; let i = index">
+        <!-- Room Image & Badges -->
+        <div class="room-card-image-wrap" (click)="openRoomDetail(r)">
+          <img [src]="getRoomImg(r.roomTypeName, i)" (error)="onImgError($event)" [alt]="r.roomNumber" class="room-card-img" loading="lazy">
+          <div class="room-overlay-tags">
+            <span class="room-type-tag">{{ r.roomTypeName }}</span>
+            <span class="badge" [class]="r.status">{{ r.status === 'available' ? 'Còn trống' : (r.status === 'occupied' ? 'Đang có khách' : 'Đang bảo trì') }}</span>
+          </div>
+          <div class="rating-tag">
+            ⭐ {{ getRating(r.id).score }} <small>({{ getRating(r.id).count }})</small>
+          </div>
+        </div>
+
+        <!-- Room Details -->
+        <div class="room-card-body">
+          <div class="room-header-row">
+            <h3 class="room-title" (click)="openRoomDetail(r)">Phòng {{ r.roomNumber }}</h3>
+            <div class="room-capacity-chip">👥 Tối đa {{ r.capacity }} Khách</div>
+          </div>
+          
+          <p class="room-desc-text">{{ r.description || 'Không gian tinh tế, thoáng đãng với đầy đủ tiện nghi sang trọng tại Quy Nhơn.' }}</p>
+
+          <!-- Amenities chips -->
+          <div class="amenities-chips">
+            <span class="amenity-chip" *ngFor="let am of getAmenities(r.roomTypeName).slice(0, 3)">
+              ✓ {{ am }}
+            </span>
+          </div>
+
+          <div class="room-card-footer">
+            <div class="price-box">
+              <span class="price-label">Giá niêm yết</span>
+              <span class="price-val">{{ r.price | number:'1.0-0' }}₫ <small>/ đêm</small></span>
+            </div>
+            <div class="card-action-btns">
+              <button class="btn btn-secondary btn-sm" (click)="openRoomDetail(r)">Xem chi tiết</button>
+              <button class="btn btn-gold btn-sm" (click)="bookRoomDirect(r.id)">Đặt phòng</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty Search State -->
+    <div class="empty-search-state" *ngIf="filteredRooms.length === 0">
+      <div class="empty-search-icon">🔍</div>
+      <h3>Không tìm thấy phòng phù hợp</h3>
+      <p>Không có phòng nào đáp ứng đủ sức chứa {{ searchGuests }} khách hoặc phù hợp với từ khóa "{{ searchLocation }}".</p>
+      <button class="btn btn-gold btn-lg" (click)="resetSearch()" style="margin-top: 16px;">
+        Xem tất cả phòng có sẵn
+      </button>
+    </div>
+  </section>
+
+  <!-- My Bookings History Section -->
+  <section class="user-bookings-section">
+    <div class="section-header">
+      <div>
+        <span class="section-tag">LỊCH SỬ CỦA BẠN</span>
+        <h2>Đơn Đặt Phòng Của Tôi</h2>
+        <p>Theo dõi các chuyến nghỉ dưỡng sắp tới và lịch sử lưu trú tại Aurora Resort.</p>
+      </div>
+      <a routerLink="/bookings/new" class="btn btn-outline-gold btn-sm">+ Đặt thêm phòng</a>
+    </div>
+
+    <div class="user-bookings-card">
+      <div class="table-responsive" *ngIf="myBookings.length > 0">
+        <table class="table-modern">
+          <thead>
+            <tr>
+              <th>Mã đơn</th>
+              <th>Phòng</th>
+              <th>Ngày nhận phòng</th>
+              <th>Ngày trả phòng</th>
+              <th>Tổng chi phí</th>
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let b of myBookings">
+              <td><strong>#BK-{{ b.id }}</strong></td>
+              <td>
+                <div class="room-mini-cell">
+                  <span class="room-number-pill">Phòng {{ b.roomNumber }}</span>
+                </div>
+              </td>
+              <td><strong>{{ b.checkInDate | vnDate }}</strong></td>
+              <td><strong>{{ b.checkOutDate | vnDate }}</strong></td>
+              <td class="text-gold font-weight-bold">{{ b.totalPrice | number:'1.0-0' }}₫</td>
+              <td><span class="badge" [class]="b.status">{{ getBookingStatusLabel(b.status) }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div class="no-bookings-empty" *ngIf="myBookings.length === 0">
+        <div class="empty-icon">🏖️</div>
+        <h3>Quý khách chưa có đơn đặt phòng nào</h3>
+        <p>Hãy khám phá danh sách phòng nghỉ và đặt chỗ ngay hôm nay để nhận nhiều ưu đãi.</p>
+        <a routerLink="/bookings/new" class="btn btn-gold" style="margin-top: 16px;">Đặt phòng trải nghiệm ngay</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Resort Services Showcase -->
+  <section class="services-showcase-section">
+    <div class="section-header">
+      <div>
+        <span class="section-tag">DỊCH VỤ 5 SAO</span>
+        <h2>Tiện Ích & Trải Nghiệm Đẳng Cấp</h2>
+        <p>Đầy đủ các dịch vụ chăm sóc sức khỏe, ẩm thực và di chuyển riêng biệt tại 05 Trần Văn Ơn, Quy Nhơn Nam, Gia Lai.</p>
+      </div>
+    </div>
+
+    <div class="services-cards-grid">
+      <div class="service-card-modern" *ngFor="let s of servicesList">
+        <div class="service-icon-box">⭐</div>
+        <div class="service-info">
+          <h3>{{ s.name }}</h3>
+          <p>{{ s.description || 'Dịch vụ cao cấp phục vụ bởi đội ngũ chuyên nghiệp của Resort.' }}</p>
+          <div class="service-price-tag">Giá: <span class="text-gold font-weight-bold">{{ s.price | number:'1.0-0' }}₫</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--                  ROOM DETAIL MODAL DIALOG                      -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" *ngIf="selectedRoom" (click)="closeRoomDetail()">
+  <div class="modal-card room-detail-modal" (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <div>
+        <h2>Chi Tiết Phòng {{ selectedRoom.roomNumber }}</h2>
+        <span class="text-gold font-weight-bold">{{ selectedRoom.roomTypeName }}</span>
+      </div>
+      <button class="btn-close" (click)="closeRoomDetail()">✕</button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body">
+      <!-- Image Gallery -->
+      <div class="gallery-wrapper">
+        <div class="main-gallery-img">
+          <img [src]="activeGalleryImage" (error)="onImgError($event)" [alt]="selectedRoom.roomNumber">
+        </div>
+        <div class="gallery-thumbs">
+          <img 
+            *ngFor="let img of selectedRoomGallery" 
+            [src]="img" 
+            (error)="onImgError($event)"
+            [class.active]="activeGalleryImage === img" 
+            (click)="setGalleryImage(img)"
+            alt="Room thumb"
+          >
+        </div>
+      </div>
+
+      <!-- Detail Info -->
+      <div class="detail-info-block">
+        <div class="detail-key-facts">
+          <div class="fact-item">
+            <span class="fact-label">Sức chứa tối đa</span>
+            <span class="fact-val">👥 {{ selectedRoom.capacity }} Người lớn</span>
+          </div>
+          <div class="fact-item">
+            <span class="fact-label">Đánh giá khách hàng</span>
+            <span class="fact-val text-gold">⭐ {{ selectedRoomRating.score }} ({{ selectedRoomRating.count }} đánh giá)</span>
+          </div>
+          <div class="fact-item">
+            <span class="fact-label">Địa chỉ Resort</span>
+            <span class="fact-val">📍 Quy Nhơn, Gia Lai</span>
+          </div>
+        </div>
+
+        <div class="detail-description">
+          <h4>Mô tả phòng</h4>
+          <p>{{ selectedRoom.description || 'Không gian nghỉ dưỡng tuyệt hảo với phong cách thiết kế sang trọng, nội thất cao cấp và view thoáng đãng tại 05 Trần Văn Ơn.' }}</p>
+        </div>
+
+        <div class="detail-amenities">
+          <h4>Tiện ích bao gồm</h4>
+          <div class="amenities-grid">
+            <div class="amenity-item" *ngFor="let am of selectedRoomAmenities">
+              <span class="amenity-check">✓</span> {{ am }}
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer-action">
+          <div class="modal-price">
+            <span>Giá phòng niêm yết:</span>
+            <strong class="text-gold font-serif">{{ selectedRoom.price | number:'1.0-0' }}₫ <small>/ đêm</small></strong>
+          </div>
+          <button (click)="closeRoomDetail(); bookRoomDirect(selectedRoom.id)" class="btn btn-gold btn-lg">
+            Tiến hành Đặt phòng này
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

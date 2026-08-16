@@ -1,0 +1,122 @@
+.page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.page-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+
+  .header-tag {
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
+
+  h1 {
+    font-size: 26px;
+    margin: 4px 0 2px;
+  }
+
+  p {
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+}
+
+.room-types-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.type-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  transition: var(--transition);
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-gold);
+  }
+
+  .type-img-wrapper {
+    position: relative;
+    height: 180px;
+    overflow: hidden;
+
+    .type-card-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .type-room-count-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(10, 25, 47, 0.85);
+      color: var(--gold);
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      backdrop-filter: blur(4px);
+      border: 1px solid var(--border-gold);
+
+      strong {
+        color: #fff;
+      }
+    }
+  }
+
+  .type-card-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+
+    .type-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+
+      h3 {
+        font-size: 18px;
+        color: var(--text-main);
+      }
+
+      .type-id-sub {
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+    }
+
+    .type-desc {
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+      flex: 1;
+    }
+
+    .type-card-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-subtle);
+    }
+  }
+}

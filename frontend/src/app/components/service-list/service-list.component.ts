@@ -1,0 +1,76 @@
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { HotelServiceService } from '../../services/hotel-service.service';
+import { HotelService } from '../../models/models';
+import { AuthService } from '../../services/auth.service';
+
+@Component({
+  selector: 'app-service-list',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
+  template: `
+    <div class="page-container">
+      <div class="page-header-row">
+        <div>
+          <span class="header-tag">TIỆN ÍCH RESORT</span>
+          <h1>{{ isCustomer ? 'Dịch Vụ & Trải Nghiệm Đẳng Cấp' : 'Quản Lý Danh Mục Dịch Vụ' }}</h1>
+          <p>{{ isCustomer ? 'Tận hưởng trọn vẹn kỳ nghỉ với các dịch vụ spa, ẩm thực, đưa đón thượng hạng.' : 'Quản lý bảng giá, thông tin chi tiết các tiện ích và dịch vụ cung cấp cho khách.' }}</p>
+        </div>
+        <a routerLink="/services/new" class="btn btn-gold" *ngIf="!isCustomer">+ Thêm dịch vụ mới</a>
+      </div>
+
+      <!-- Services Cards Grid -->
+      <div class="services-modern-grid">
+        <div class="service-box-card" *ngFor="let s of services">
+          <div class="service-header-row">
+            <div class="service-icon-pill">
+              <span class="icon-emoji">✨</span>
+            </div>
+            <div class="service-cost-tag">
+              <span class="cost-num text-gold font-serif">{{ s.price | number:'1.0-0' }}₫</span>
+              <small class="cost-unit">/ lượt</small>
+            </div>
+          </div>
+
+          <div class="service-body">
+            <h3>{{ s.name }}</h3>
+            <p>{{ s.description || 'Dịch vụ chất lượng cao được phục vụ bởi đội ngũ chuyên nghiệp của Aurora Resort.' }}</p>
+          </div>
+
+          <div class="service-actions" *ngIf="!isCustomer">
+            <a [routerLink]="['/services/edit', s.id]" class="btn btn-secondary btn-sm">
+              ✏️ Sửa
+            </a>
+            <button (click)="delete(s.id)" class="btn btn-danger btn-sm">
+              🗑️ Xóa
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `,
+  styleUrls: ['./service-list.component.scss']
+})
+export class ServiceListComponent implements OnInit {
+  services: HotelService[] = [];
+  isCustomer = false;
+
+  constructor(private service: HotelServiceService, private auth: AuthService) {}
+
+  ngOnInit(): void {
+    const user = this.auth.getCurrentUser();
+    this.isCustomer = user?.role === 'customer';
+    this.load();
+  }
+
+  load(): void {
+    this.service.getAll().subscribe(d => this.services = d);
+  }
+
+  delete(id: number): void {
+    if (confirm('Bạn có chắc chắn muốn xóa dịch vụ này?')) {
+      this.service.delete(id).subscribe(() => this.load());
+    }
+  }
+}

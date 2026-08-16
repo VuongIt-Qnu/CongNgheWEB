@@ -1,0 +1,259 @@
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  background: rgba(10, 25, 47, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(198, 169, 106, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.nav-container {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+// ── BRAND LOGO ──
+.nav-brand {
+  .brand-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+
+    .brand-icon {
+      font-size: 24px;
+      background: linear-gradient(135deg, rgba(198, 169, 106, 0.2), rgba(198, 169, 106, 0.05));
+      border: 1px solid var(--border-gold);
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-md);
+      box-shadow: 0 2px 10px rgba(198, 169, 106, 0.15);
+    }
+
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+
+      .brand-title {
+        font-family: var(--font-serif);
+        color: var(--gold);
+        font-weight: 700;
+        font-size: 17px;
+        letter-spacing: 0.08em;
+      }
+
+      .brand-subtitle {
+        color: var(--text-muted);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+    }
+  }
+}
+
+// ── NAVIGATION MENU ──
+.nav-menu {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  margin-left: 28px;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-body);
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    transition: var(--transition);
+
+    .nav-icon {
+      font-size: 15px;
+    }
+
+    &:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    &.active {
+      color: var(--gold);
+      background: var(--gold-glow);
+      border: 1px solid rgba(198, 169, 106, 0.3);
+      font-weight: 600;
+    }
+  }
+}
+
+// ── USER PILL & ACTIONS ──
+.nav-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-surface-light);
+  padding: 5px 12px 5px 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+
+  .avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    color: #06101e;
+    font-weight: 800;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .user-meta {
+    display: flex;
+    flex-direction: column;
+
+    .user-name {
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .user-role-badge {
+      color: var(--gold);
+      font-size: 10.5px;
+      font-weight: 500;
+    }
+  }
+}
+
+.btn-logout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fff;
+    border-color: #ef4444;
+  }
+}
+
+// ── MOBILE TOGGLE BUTTON ──
+.mobile-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px;
+
+  .bar {
+    width: 24px;
+    height: 2px;
+    background-color: var(--gold);
+    border-radius: 2px;
+    transition: var(--transition);
+  }
+}
+
+// ── RESPONSIVE MEDIA QUERIES ──
+@media (max-width: 1024px) {
+  .mobile-toggle {
+    display: flex;
+  }
+
+  .nav-menu {
+    position: fixed;
+    top: 72px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-surface);
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 24px;
+    margin-left: 0;
+    gap: 20px;
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: var(--transition);
+    border-bottom: 1px solid var(--border-gold);
+    overflow-y: auto;
+
+    &.active {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
+  .nav-links {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+
+    a {
+      padding: 12px 16px;
+      font-size: 15px;
+    }
+  }
+
+  .nav-user-actions {
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-subtle);
+
+    .user-pill {
+      justify-content: center;
+      padding: 8px 16px;
+    }
+
+    .btn-logout {
+      justify-content: center;
+      padding: 12px;
+    }
+  }
+}
