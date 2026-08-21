@@ -133,33 +133,7 @@
   overflow-x: auto;
 }
 
-.table-modern {
-  width: 100%;
-  border-collapse: collapse;
-
-  th {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    padding: 12px;
-    text-align: left;
-    background: var(--bg-surface-light);
-    border-bottom: 1px solid var(--border-subtle);
-  }
-
-  td {
-    padding: 14px 12px;
-    color: var(--text-body);
-    font-size: 13.5px;
-    border-bottom: 1px solid var(--border-subtle);
-  }
-
-  tr:hover td {
-    background: rgba(255, 255, 255, 0.02);
-  }
-}
+// .table-modern giờ đã chuyển sang styles.scss (global) — dùng chung cho mọi trang danh sách.
 
 .rooms-preview-list {
   display: flex;

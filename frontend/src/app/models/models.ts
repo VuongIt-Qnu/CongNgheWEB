@@ -55,6 +55,11 @@ export interface Booking {
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
+  // ── Tổng hợp thanh toán ──
+  amountPaid: number;
+  amountDue: number;
+  /** unpaid | partial | paid */
+  paymentStatus: string;
 }
 
 export interface HotelService {
@@ -62,4 +67,27 @@ export interface HotelService {
   name: string;
   price: number;
   description?: string;
+}
+
+export interface Payment {
+  id: number;
+  bookingId: number;
+  customerName: string;
+  roomNumber: string;
+  amount: number;
+  /** cash | bank_transfer | credit_card */
+  method: string;
+  /** pending | completed | failed | refunded */
+  status: string;
+  transactionCode?: string;
+  notes?: string;
+  createdAt?: string;
+  paidAt?: string;
+}
+
+export interface CreatePayment {
+  bookingId: number;
+  amount: number;
+  method: string;
+  notes?: string;
 }

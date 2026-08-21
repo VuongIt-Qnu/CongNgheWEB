@@ -2,17 +2,24 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, tap } from 'rxjs';
 import { AuthResponse, User } from '../models/models';
+import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private apiUrl = 'http://localhost:5000/api/auth';
+  private apiUrl = `${environment.apiUrl}/auth`;
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient) {
     const stored = localStorage.getItem('user');
     if (stored) {
-      this.currentUserSubject.next(JSON.parse(stored));
+      try {
+        this.currentUserSubject.next(JSON.parse(stored));
+      } catch {
+        // Dữ liệu localStorage bị hỏng/không hợp lệ — coi như chưa đăng nhập thay vì crash app.
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      }
     }
   }
 

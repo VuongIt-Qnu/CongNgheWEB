@@ -19,6 +19,7 @@ builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IServiceService, ServiceService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 // ── JWT Authentication ──
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "aUr0r4_r3s0rt_S3cr3T_2026xK9pMzQ7wB5n";
@@ -71,6 +72,19 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+else
+{
+    // Production: không lộ stack trace, trả về JSON lỗi gọn gàng.
+    app.UseExceptionHandler(errorApp =>
+    {
+        errorApp.Run(async context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new { message = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau." });
+        });
+    });
 }
 
 app.UseCors("AllowAngular");

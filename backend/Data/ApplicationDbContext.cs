@@ -14,6 +14,7 @@ namespace backend.Data
         public DbSet<Customer> Customers { get; set; } = null!;
         public DbSet<Booking> Bookings { get; set; } = null!;
         public DbSet<Service> Services { get; set; } = null!;
+        public DbSet<Payment> Payments { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -55,6 +56,15 @@ namespace backend.Data
                 entity.HasOne(b => b.Room)
                       .WithMany(r => r.Bookings)
                       .HasForeignKey(b => b.RoomId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Payment → Booking
+            modelBuilder.Entity<Payment>(entity =>
+            {
+                entity.HasOne(p => p.Booking)
+                      .WithMany(b => b.Payments)
+                      .HasForeignKey(p => p.BookingId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -117,6 +127,12 @@ namespace backend.Data
                 new Booking { Id = 1, CustomerId = 1, RoomId = 1, CheckInDate = "2026-08-20", CheckOutDate = "2026-08-23", Status = "confirmed", TotalPrice = 5670000, CreatedAt = "2026-08-15 10:00:00" },
                 new Booking { Id = 2, CustomerId = 2, RoomId = 4, CheckInDate = "2026-08-15", CheckOutDate = "2026-08-18", Status = "occupied", TotalPrice = 8250000, CreatedAt = "2026-08-10 14:30:00" },
                 new Booking { Id = 3, CustomerId = 3, RoomId = 5, CheckInDate = "2026-09-01", CheckOutDate = "2026-09-05", Status = "pending", TotalPrice = 16800000, CreatedAt = "2026-08-12 09:00:00" }
+            );
+
+            // Seed sample payments — minh hoạ 3 tình huống: đã đặt cọc một phần, đã thanh toán đủ, chưa thanh toán
+            modelBuilder.Entity<Payment>().HasData(
+                new Payment { Id = 1, BookingId = 1, Amount = 2000000, Method = "bank_transfer", Status = "completed", TransactionCode = "PAY-20260815-0001", CreatedAt = "2026-08-15 10:05:00", PaidAt = "2026-08-15 10:06:00", Notes = "Đặt cọc giữ phòng" },
+                new Payment { Id = 2, BookingId = 2, Amount = 8250000, Method = "cash", Status = "completed", TransactionCode = "PAY-20260810-0002", CreatedAt = "2026-08-10 14:35:00", PaidAt = "2026-08-10 14:40:00", Notes = "Thanh toán đủ tại quầy" }
             );
         }
     }

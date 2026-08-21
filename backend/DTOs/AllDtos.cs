@@ -66,7 +66,9 @@ namespace backend.DTOs
     {
         [Required] public string RoomNumber { get; set; } = string.Empty;
         [Required] public int RoomTypeId { get; set; }
-        [Required] public double Price { get; set; }
+        [Range(0.01, double.MaxValue, ErrorMessage = "Giá phòng phải lớn hơn 0.")]
+        public double Price { get; set; }
+        [Range(1, 20, ErrorMessage = "Sức chứa phải từ 1 đến 20 người.")]
         public int Capacity { get; set; } = 1;
         public string Status { get; set; } = "available";
         public string? Description { get; set; }
@@ -76,7 +78,9 @@ namespace backend.DTOs
     {
         [Required] public string RoomNumber { get; set; } = string.Empty;
         [Required] public int RoomTypeId { get; set; }
-        [Required] public double Price { get; set; }
+        [Range(0.01, double.MaxValue, ErrorMessage = "Giá phòng phải lớn hơn 0.")]
+        public double Price { get; set; }
+        [Range(1, 20, ErrorMessage = "Sức chứa phải từ 1 đến 20 người.")]
         public int Capacity { get; set; } = 1;
         public string Status { get; set; } = "available";
         public string? Description { get; set; }
@@ -119,6 +123,12 @@ namespace backend.DTOs
         public string? Notes { get; set; }
         public string? CreatedAt { get; set; }
         public string? UpdatedAt { get; set; }
+
+        // ── Tổng hợp thanh toán (tính từ các Payment có Status = "completed") ──
+        public double AmountPaid { get; set; }
+        public double AmountDue { get; set; }
+        /// <summary>unpaid | partial | paid</summary>
+        public string PaymentStatus { get; set; } = "unpaid";
     }
 
     public class CreateBookingDto
@@ -159,7 +169,40 @@ namespace backend.DTOs
     public class CreateServiceDto
     {
         [Required] public string Name { get; set; } = string.Empty;
-        [Required] public double Price { get; set; }
+        [Range(0, double.MaxValue, ErrorMessage = "Giá dịch vụ không được âm.")]
+        public double Price { get; set; }
         public string? Description { get; set; }
+    }
+
+    // ── Payment DTOs ──
+    public class PaymentDto
+    {
+        public int Id { get; set; }
+        public int BookingId { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
+        public string RoomNumber { get; set; } = string.Empty;
+        public double Amount { get; set; }
+        public string Method { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string? TransactionCode { get; set; }
+        public string? Notes { get; set; }
+        public string? CreatedAt { get; set; }
+        public string? PaidAt { get; set; }
+    }
+
+    public class CreatePaymentDto
+    {
+        [Required] public int BookingId { get; set; }
+        [Required][Range(1, double.MaxValue, ErrorMessage = "Số tiền thanh toán phải lớn hơn 0.")]
+        public double Amount { get; set; }
+        [Required] public string Method { get; set; } = "cash";
+        public string? Notes { get; set; }
+    }
+
+    public class UpdatePaymentStatusDto
+    {
+        /// <summary>completed | failed | refunded</summary>
+        [Required] public string Status { get; set; } = string.Empty;
+        public string? Notes { get; set; }
     }
 }

@@ -13,16 +13,18 @@ namespace backend.Controllers
 
         public CustomersController(ICustomerService service) => _service = service;
 
-        /// <summary>Lấy danh sách khách hàng</summary>
+        /// <summary>Lấy danh sách khách hàng (chứa dữ liệu cá nhân — chỉ admin/staff)</summary>
         [HttpGet]
+        [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> GetAll([FromQuery] string? search)
         {
             var list = await _service.GetAll(search);
             return Ok(list);
         }
 
-        /// <summary>Lấy khách hàng theo ID</summary>
+        /// <summary>Lấy khách hàng theo ID (chỉ admin/staff — dùng /profile cho tài khoản đang đăng nhập)</summary>
         [HttpGet("{id}")]
+        [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> GetById(int id)
         {
             var item = await _service.GetById(id);

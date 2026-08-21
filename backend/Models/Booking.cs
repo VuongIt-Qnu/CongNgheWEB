@@ -44,5 +44,7 @@ namespace backend.Models
 
         [ForeignKey("RoomId")]
         public Room? Room { get; set; }
+
+        public ICollection<Payment> Payments { get; set; } = new List<Payment>();
     }
 }

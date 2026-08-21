@@ -10,6 +10,7 @@ namespace backend.Controllers
     public class RoomsController : ControllerBase
     {
         private readonly IRoomService _service;
+        private static readonly string[] ValidStatuses = { "available", "occupied", "maintenance" };
 
         public RoomsController(IRoomService service) => _service = service;
 
@@ -35,6 +36,9 @@ namespace backend.Controllers
         [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> Create([FromBody] CreateRoomDto dto)
         {
+            if (!ValidStatuses.Contains(dto.Status))
+                return BadRequest(new { message = $"Trạng thái phòng '{dto.Status}' không hợp lệ." });
+
             var item = await _service.Create(dto);
             return CreatedAtAction(nameof(GetById), new { id = item.Id }, item);
         }
@@ -44,6 +48,9 @@ namespace backend.Controllers
         [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateRoomDto dto)
         {
+            if (!ValidStatuses.Contains(dto.Status))
+                return BadRequest(new { message = $"Trạng thái phòng '{dto.Status}' không hợp lệ." });
+
             var item = await _service.Update(id, dto);
             if (item == null) return NotFound(new { message = "Không tìm thấy phòng" });
             return Ok(item);

@@ -1,7 +1,7 @@
 # 🏨 Aurora Resort - Hệ thống Quản lý Khách sạn Cao cấp
 
 Dự án này là phiên bản chuyển đổi hoàn chỉnh của **Đồ án 22** từ kiến trúc cũ (Node.js/Express + React/Vite) sang kiến trúc mới hiện đại và hiệu năng cao:
-- **Backend**: ASP.NET Core 9.0 Web API & Entity Framework Core (SQLite).
+- **Backend**: ASP.NET Core 8.0 Web API & Entity Framework Core (SQLite).
 - **Frontend**: Angular 19 (Standalone Components, SCSS, RxJS).
 
 ---
@@ -16,7 +16,7 @@ Dự án này là phiên bản chuyển đổi hoàn chỉnh của **Đồ án 2
 
 ## 🛠️ Yêu cầu Hệ thống
 
-1. **.NET SDK 9.0** trở lên.
+1. **.NET SDK 8.0** trở lên.
 2. **Node.js** v22.20.0 trở lên.
 3. **Angular CLI** (được tự động chạy thông qua `npx`).
 

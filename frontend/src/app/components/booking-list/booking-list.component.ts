@@ -3,10 +3,12 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { BookingService } from '../../services/booking.service';
+import { PaymentService } from '../../services/payment.service';
 import { Booking } from '../../models/models';
 import { AuthService } from '../../services/auth.service';
 import { VnDatePipe } from '../../pipes/vn-date.pipe';
 import { BookingStatusPipe, BOOKING_STATUS_MAP } from '../../pipes/booking-status.pipe';
+import { BookingPaymentStatusPipe, PAYMENT_METHOD_MAP } from '../../pipes/payment-status.pipe';
 
 /** Cấu hình hiển thị actions theo từng trạng thái */
 const STATUS_ACTIONS: Record<string, { action: string; label: string; icon: string; btnClass: string; newStatus: string; confirmMsg: string }[]> = {
@@ -30,7 +32,7 @@ const STATUS_ACTIONS: Record<string, { action: string; label: string; icon: stri
 @Component({
   selector: 'app-booking-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, VnDatePipe, BookingStatusPipe],
+  imports: [CommonModule, RouterModule, FormsModule, VnDatePipe, BookingStatusPipe, BookingPaymentStatusPipe],
   template: `
     <div class="page-container">
       <!-- Toast Notification -->
@@ -111,6 +113,7 @@ const STATUS_ACTIONS: Record<string, { action: string; label: string; icon: stri
               <th>Phòng nghỉ</th>
               <th>Lịch trình lưu trú</th>
               <th>Tổng chi phí</th>
+              <th>Thanh toán</th>
               <th>Ghi chú</th>
               <th>Trạng thái</th>
               <th *ngIf="!isCustomer" style="text-align: right; min-width: 200px;">Thao tác</th>
@@ -138,6 +141,21 @@ const STATUS_ACTIONS: Record<string, { action: string; label: string; icon: stri
               </td>
               <td>
                 <strong class="price-text text-gold">{{ b.totalPrice | number:'1.0-0' }}₫</strong>
+              </td>
+              <td>
+                <div class="payment-cell">
+                  <span class="badge payment-badge" [class]="b.paymentStatus | bookingPaymentStatus:'cssClass'">
+                    {{ b.paymentStatus | bookingPaymentStatus:'icon' }} {{ b.paymentStatus | bookingPaymentStatus }}
+                  </span>
+                  <button
+                    *ngIf="isCustomer && b.amountDue > 0 && !isTerminalStatus(b.status)"
+                    class="btn btn-sm btn-pay"
+                    (click)="openPayModal(b)"
+                    title="Thanh toán còn thiếu {{ b.amountDue | number:'1.0-0' }}₫"
+                  >
+                    💳 Thanh toán
+                  </button>
+                </div>
               </td>
               <td class="notes-cell">
                 <span class="notes-text">{{ b.notes || '---' }}</span>
@@ -185,7 +203,7 @@ const STATUS_ACTIONS: Record<string, { action: string; label: string; icon: stri
               </td>
             </tr>
             <tr *ngIf="filteredBookings.length === 0">
-              <td [attr.colspan]="isCustomer ? 6 : 8" class="empty-table-cell">
+              <td [attr.colspan]="isCustomer ? 7 : 9" class="empty-table-cell">
                 <div class="empty-state">
                   <span>📋</span>
                   <p>Không tìm thấy đơn đặt phòng nào.</p>
@@ -194,6 +212,84 @@ const STATUS_ACTIONS: Record<string, { action: string; label: string; icon: stri
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Payment Modal (customer) -->
+    <div class="modal-overlay" *ngIf="payModalBooking" (click)="closePayModal()">
+      <div class="modal-card payment-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div>
+            <h2>💳 Thanh toán đơn #BK-{{ payModalBooking.id }}</h2>
+            <p class="modal-sub">Phòng {{ payModalBooking.roomNumber }} • Còn thiếu <strong class="text-gold">{{ payModalBooking.amountDue | number:'1.0-0' }}₫</strong></p>
+          </div>
+          <button class="btn-close" (click)="closePayModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-alert error" *ngIf="payError">
+            <span>⚠️</span>
+            <p>{{ payError }}</p>
+          </div>
+
+          <div class="form-group">
+            <label for="payMethod">Phương thức thanh toán <span class="required">*</span></label>
+            <select id="payMethod" [(ngModel)]="payMethod" name="payMethod" class="form-select">
+              <option *ngFor="let m of paymentMethods" [value]="m.value">{{ m.icon }} {{ m.label }}</option>
+            </select>
+          </div>
+
+          <div class="transfer-details" *ngIf="payMethod === 'bank_transfer' && payModalBooking">
+            <div class="transfer-details-header">
+              <strong>Thông tin chuyển khoản</strong>
+              <span>Vui lòng chuyển đúng nội dung</span>
+            </div>
+            <div class="transfer-row">
+              <span class="transfer-label">Tên ngân hàng</span>
+              <span class="transfer-value">MB Bank</span>
+              <button type="button" class="btn-copy" (click)="copyTransferValue('MB Bank', 'Tên ngân hàng')" title="Sao chép tên ngân hàng" aria-label="Sao chép tên ngân hàng">📋</button>
+            </div>
+            <div class="transfer-row">
+              <span class="transfer-label">STK</span>
+              <span class="transfer-value">6999919092004</span>
+              <button type="button" class="btn-copy" (click)="copyTransferValue('6999919092004', 'số tài khoản')" title="Sao chép số tài khoản" aria-label="Sao chép số tài khoản">📋</button>
+            </div>
+            <div class="transfer-row">
+              <span class="transfer-label">Số tiền</span>
+              <span class="transfer-value text-gold">{{ payModalBooking.totalPrice | number:'1.0-0' }}₫</span>
+              <button type="button" class="btn-copy" (click)="copyTransferValue(payModalBooking.totalPrice.toString(), 'số tiền')" title="Sao chép số tiền" aria-label="Sao chép số tiền">📋</button>
+            </div>
+            <div class="transfer-row">
+              <span class="transfer-label">Nội dung</span>
+              <span class="transfer-value">{{ transferContent }}</span>
+              <button type="button" class="btn-copy" (click)="copyTransferValue(transferContent, 'nội dung chuyển khoản')" title="Sao chép nội dung chuyển khoản" aria-label="Sao chép nội dung chuyển khoản">📋</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="payAmount">Số tiền thanh toán <span class="required">*</span></label>
+            <input
+              id="payAmount"
+              type="number"
+              [(ngModel)]="payAmount"
+              name="payAmount"
+              class="form-control"
+              [min]="1"
+              [max]="payModalBooking.amountDue"
+              step="1000"
+            >
+            <span class="date-hint">Tối đa {{ payModalBooking.amountDue | number:'1.0-0' }}₫ (số tiền còn thiếu của đơn này)</span>
+          </div>
+
+          <p class="pay-note">
+            ℹ️ Sau khi gửi, yêu cầu thanh toán sẽ ở trạng thái <strong>chờ xác nhận</strong> cho tới khi nhân viên lễ tân xác nhận đã nhận được tiền.
+          </p>
+        </div>
+        <div class="modal-footer-action">
+          <button class="btn btn-secondary" (click)="closePayModal()" [disabled]="paySubmitting">Hủy</button>
+          <button class="btn btn-gold" (click)="submitPayment()" [disabled]="paySubmitting">
+            {{ paySubmitting ? 'Đang gửi...' : 'Xác nhận thanh toán' }}
+          </button>
+        </div>
       </div>
     </div>
   `,
@@ -262,6 +358,114 @@ const STATUS_ACTIONS: Record<string, { action: string; label: string; icon: stri
     .status-dot.orange { background: #f59e0b; }
     .status-dot.green { background: #22c55e; }
     .status-dot.red { background: #ef4444; }
+
+    /* ── Payment status badge (Booking.paymentStatus) ── */
+    .payment-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+
+    .badge.unpaid { background: rgba(148, 163, 184, 0.12); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25); }
+    .badge.unpaid::before { background: #94a3b8; }
+    .badge.partial { background: var(--status-warning-bg); color: var(--status-warning); border: 1px solid rgba(245, 158, 11, 0.25); }
+    .badge.partial::before { background: var(--status-warning); }
+    .badge.paid { background: var(--status-success-bg); color: var(--status-success); border: 1px solid rgba(34, 197, 94, 0.25); }
+    .badge.paid::before { background: var(--status-success); }
+
+    .btn-pay {
+      background: rgba(198, 169, 106, 0.15);
+      color: var(--gold);
+      border: 1px solid rgba(198, 169, 106, 0.3);
+    }
+    .btn-pay:hover { background: rgba(198, 169, 106, 0.25); }
+
+    /* ── Payment Modal ── */
+    .payment-modal { max-width: 480px; }
+    .payment-modal .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .payment-modal .modal-header h2 { font-size: 18px; margin-bottom: 4px; }
+    .payment-modal .modal-sub { font-size: 12.5px; color: var(--text-muted); }
+    .payment-modal .btn-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+    .payment-modal .btn-close:hover { color: #fff; }
+    .payment-modal .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+    .payment-modal .form-alert {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      border-radius: var(--radius-md);
+      font-size: 13.5px;
+    }
+    .payment-modal .form-alert.error {
+      background: var(--status-danger-bg);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .payment-modal .required { color: var(--status-danger); }
+    .payment-modal .date-hint { display: block; font-size: 11.5px; color: var(--text-muted); margin-top: 6px; }
+    .payment-modal .transfer-details {
+      background: rgba(24, 65, 125, 0.32);
+      border: 1px solid rgba(96, 165, 250, 0.2);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .payment-modal .transfer-details-header {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 13px 14px;
+      border-bottom: 1px solid rgba(96, 165, 250, 0.16);
+    }
+    .payment-modal .transfer-details-header strong { color: var(--text-main); font-size: 13px; }
+    .payment-modal .transfer-details-header span { color: var(--text-muted); font-size: 11.5px; }
+    .payment-modal .transfer-row {
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr) 30px;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+      font-size: 13px;
+    }
+    .payment-modal .transfer-row:last-child { border-bottom: none; }
+    .payment-modal .transfer-label { color: var(--text-muted); }
+    .payment-modal .transfer-value { color: var(--text-main); font-weight: 600; overflow-wrap: anywhere; }
+    .payment-modal .btn-copy {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      background: var(--bg-surface-light);
+      color: var(--text-main);
+      cursor: pointer;
+      line-height: 1;
+    }
+    .payment-modal .btn-copy:hover { border-color: var(--gold); background: var(--gold-glow); }
+    .payment-modal .pay-note {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      background: var(--bg-surface-light);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      line-height: 1.5;
+    }
+    .payment-modal .modal-footer-action {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--border-subtle);
+    }
   `],
   styleUrls: ['./booking-list.component.scss']
 })
@@ -280,7 +484,19 @@ export class BookingListComponent implements OnInit {
   toastType = 'toast-success';
   private toastTimer: any;
 
-  constructor(private service: BookingService, private auth: AuthService) {}
+  /** ── Payment Modal state ── */
+  payModalBooking: Booking | null = null;
+  payMethod = 'cash';
+  payAmount = 0;
+  payError = '';
+  paySubmitting = false;
+  readonly paymentMethods = Object.entries(PAYMENT_METHOD_MAP).map(([value, m]) => ({ value, ...m }));
+
+  get transferContent(): string {
+    return this.payModalBooking ? `${this.payModalBooking.customerName}-BK-${this.payModalBooking.id}` : '';
+  }
+
+  constructor(private service: BookingService, private paymentService: PaymentService, private auth: AuthService) {}
 
   ngOnInit(): void {
     const user = this.auth.getCurrentUser();
@@ -362,6 +578,64 @@ export class BookingListComponent implements OnInit {
         error: () => this.showToast('Không thể xóa đơn này.', 'toast-error')
       });
     }
+  }
+
+  /** Đơn ở trạng thái cuối (không thể thao tác thêm) */
+  isTerminalStatus(status: string): boolean {
+    return ['completed', 'cancelled', 'no_show'].includes(status);
+  }
+
+  /** ── Payment Modal ── */
+  openPayModal(b: Booking): void {
+    this.payModalBooking = b;
+    this.payMethod = 'cash';
+    this.payAmount = b.amountDue;
+    this.payError = '';
+  }
+
+  closePayModal(): void {
+    if (this.paySubmitting) return;
+    this.payModalBooking = null;
+  }
+
+  copyTransferValue(value: string, label: string): void {
+    navigator.clipboard.writeText(value).then(
+      () => this.showToast(`Đã sao chép ${label}.`, 'toast-success'),
+      () => this.showToast(`Không thể sao chép ${label}.`, 'toast-error')
+    );
+  }
+
+  submitPayment(): void {
+    if (!this.payModalBooking) return;
+
+    if (!this.payAmount || this.payAmount <= 0) {
+      this.payError = 'Vui lòng nhập số tiền hợp lệ.';
+      return;
+    }
+    if (this.payAmount > this.payModalBooking.amountDue) {
+      this.payError = `Số tiền không được vượt quá số dư còn lại (${this.payModalBooking.amountDue.toLocaleString('vi-VN')}₫).`;
+      return;
+    }
+
+    this.payError = '';
+    this.paySubmitting = true;
+
+    this.paymentService.create({
+      bookingId: this.payModalBooking.id,
+      amount: this.payAmount,
+      method: this.payMethod
+    }).subscribe({
+      next: () => {
+        this.paySubmitting = false;
+        this.payModalBooking = null;
+        this.showToast('Đã gửi yêu cầu thanh toán, đang chờ nhân viên xác nhận.', 'toast-success');
+        this.load(); // Tải lại để đồng bộ trạng thái (dù vẫn "chưa xác nhận" cho tới khi staff duyệt)
+      },
+      error: (err) => {
+        this.paySubmitting = false;
+        this.payError = err.error?.message || 'Có lỗi xảy ra, vui lòng thử lại.';
+      }
+    });
   }
 
   private showToast(msg: string, type: string): void {

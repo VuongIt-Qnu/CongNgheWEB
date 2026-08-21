@@ -5,4 +5,16 @@ node_modules/
 **/dist/
 **/build/
 **/coverage/
+
+# ── .NET build output (backend) ──
+**/bin/
+**/obj/
+
+# ── SQLite runtime database — được tự tạo & seed lại khi chạy `dotnet run` ──
+**/hotel.db
+**/hotel.db-shm
+**/hotel.db-wal
 **/data/hotel.db
+
+# ── File tạm/lock của Microsoft Office ──
+~$*

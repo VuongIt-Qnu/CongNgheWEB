@@ -14,6 +14,7 @@ import { BookingListComponent } from './components/booking-list/booking-list.com
 import { BookingFormComponent } from './components/booking-form/booking-form.component';
 import { ServiceListComponent } from './components/service-list/service-list.component';
 import { ServiceFormComponent } from './components/service-form/service-form.component';
+import { PaymentListComponent } from './components/payment-list/payment-list.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -34,5 +35,6 @@ export const routes: Routes = [
   { path: 'services', component: ServiceListComponent, canActivate: [authGuard] },
   { path: 'services/new', component: ServiceFormComponent, canActivate: [authGuard, adminGuard] },
   { path: 'services/edit/:id', component: ServiceFormComponent, canActivate: [authGuard, adminGuard] },
+  { path: 'payments', component: PaymentListComponent, canActivate: [authGuard, adminGuard] },
   { path: '**', redirectTo: '' }
 ];
