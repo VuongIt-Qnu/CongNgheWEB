@@ -1,6 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { HotelServiceService } from '../../services/hotel-service.service';
 import { HotelService } from '../../models/models';
 import { AuthService } from '../../services/auth.service';
@@ -8,7 +11,7 @@ import { AuthService } from '../../services/auth.service';
 @Component({
   selector: 'app-service-list',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, MatCardModule, MatButtonModule, MatIconModule],
   template: `
     <div class="page-container">
       <div class="page-header-row">
@@ -17,36 +20,42 @@ import { AuthService } from '../../services/auth.service';
           <h1>{{ isCustomer ? 'Dịch Vụ & Trải Nghiệm Đẳng Cấp' : 'Quản Lý Danh Mục Dịch Vụ' }}</h1>
           <p>{{ isCustomer ? 'Tận hưởng trọn vẹn kỳ nghỉ với các dịch vụ spa, ẩm thực, đưa đón thượng hạng.' : 'Quản lý bảng giá, thông tin chi tiết các tiện ích và dịch vụ cung cấp cho khách.' }}</p>
         </div>
-        <a routerLink="/services/new" class="btn btn-gold" *ngIf="!isCustomer">+ Thêm dịch vụ mới</a>
+        @if (!isCustomer) {
+          <a mat-raised-button color="primary" routerLink="/services/new">+ Thêm dịch vụ mới</a>
+        }
       </div>
 
       <!-- Services Cards Grid -->
       <div class="services-modern-grid">
-        <div class="service-box-card" *ngFor="let s of services">
-          <div class="service-header-row">
-            <div class="service-icon-pill">
-              <span class="icon-emoji">✨</span>
+        @for (s of services; track s.id) {
+          <mat-card appearance="outlined" class="service-box-card">
+            <div class="service-header-row">
+              <div class="service-icon-pill">
+                <span class="icon-emoji">✨</span>
+              </div>
+              <div class="service-cost-tag">
+                <span class="cost-num text-gold font-serif">{{ s.price | number:'1.0-0' }}₫</span>
+                <small class="cost-unit">/ lượt</small>
+              </div>
             </div>
-            <div class="service-cost-tag">
-              <span class="cost-num text-gold font-serif">{{ s.price | number:'1.0-0' }}₫</span>
-              <small class="cost-unit">/ lượt</small>
+
+            <div class="service-body">
+              <h3>{{ s.name }}</h3>
+              <p>{{ s.description || 'Dịch vụ chất lượng cao được phục vụ bởi đội ngũ chuyên nghiệp của Aurora Resort.' }}</p>
             </div>
-          </div>
 
-          <div class="service-body">
-            <h3>{{ s.name }}</h3>
-            <p>{{ s.description || 'Dịch vụ chất lượng cao được phục vụ bởi đội ngũ chuyên nghiệp của Aurora Resort.' }}</p>
-          </div>
-
-          <div class="service-actions" *ngIf="!isCustomer">
-            <a [routerLink]="['/services/edit', s.id]" class="btn btn-secondary btn-sm">
-              ✏️ Sửa
-            </a>
-            <button (click)="delete(s.id)" class="btn btn-danger btn-sm">
-              🗑️ Xóa
-            </button>
-          </div>
-        </div>
+            @if (!isCustomer) {
+              <div class="service-actions">
+                <a mat-stroked-button [routerLink]="['/services/edit', s.id]">
+                  <mat-icon>edit</mat-icon> Sửa
+                </a>
+                <button mat-button color="warn" (click)="delete(s.id)">
+                  <mat-icon>delete</mat-icon> Xóa
+                </button>
+              </div>
+            }
+          </mat-card>
+        }
       </div>
     </div>
   `,

@@ -1,35 +1,31 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { map, switchMap } from 'rxjs';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { BookingService } from '../../services/booking.service';
 import { CustomerService } from '../../services/customer.service';
 import { RoomService } from '../../services/room.service';
 import { Customer, Room } from '../../models/models';
 import { AuthService } from '../../services/auth.service';
 import { getPrimaryRoomImage, handleImageFallback } from '../../utils/room-images';
-
+import { dateRangeValidator, getLocalDateString, parseLocalDate } from '../../utils/date-range.validator';
 import { VnDatePipe } from '../../pipes/vn-date.pipe';
-
-function getLocalDateString(date: Date = new Date()): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function getNextDayString(dateStr: string): string {
-  if (!dateStr) return '';
-  const parts = dateStr.split('-').map(Number);
-  const d = new Date(parts[0], parts[1] - 1, parts[2]);
-  d.setDate(d.getDate() + 1);
-  return getLocalDateString(d);
-}
 
 @Component({
   selector: 'app-booking-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, VnDatePipe],
+  imports: [
+    CommonModule, ReactiveFormsModule, RouterModule, VnDatePipe,
+    MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule, MatDatepickerModule, MatSnackBarModule
+  ],
   template: `
     <div class="booking-form-container">
       <!-- Breadcrumb & Header -->
@@ -41,116 +37,95 @@ function getNextDayString(dateStr: string): string {
 
       <div class="booking-layout-grid">
         <!-- Main Form -->
-        <form (ngSubmit)="onSubmit()" class="booking-card-main">
-          <!-- Form Submission Error Alert -->
-          <div class="form-alert error" *ngIf="serverError">
-            <span>⚠️</span>
-            <p>{{ serverError }}</p>
-          </div>
-
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="booking-card-main">
           <!-- Customer Selection (Admin Only) -->
-          <div class="form-group" *ngIf="!isCustomer">
-            <label for="customerId">Khách hàng đặt phòng <span class="required">*</span></label>
-            <select id="customerId" [(ngModel)]="item.customerId" name="customerId" class="form-select" required>
-              <option [ngValue]="null" disabled>-- Chọn khách hàng --</option>
-              <option *ngFor="let c of customers" [value]="c.id">
-                {{ c.name }} • SĐT: {{ c.phone || 'Chưa có' }} • CCCD: {{ c.idCard || 'N/A' }}
-              </option>
-            </select>
-          </div>
+          @if (!isCustomer) {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Khách hàng đặt phòng</mat-label>
+              <mat-select formControlName="customerId">
+                @for (c of customers; track c.id) {
+                  <mat-option [value]="c.id">{{ c.name }} • SĐT: {{ c.phone || 'Chưa có' }} • CCCD: {{ c.idCard || 'N/A' }}</mat-option>
+                }
+              </mat-select>
+              @if (form.controls.customerId.hasError('required') && form.controls.customerId.touched) {
+                <mat-error>Vui lòng chọn khách hàng.</mat-error>
+              }
+            </mat-form-field>
+          }
 
           <!-- Room Selection -->
-          <div class="form-group">
-            <label for="roomId">Chọn phòng nghỉ <span class="required">*</span></label>
-            <select id="roomId" [(ngModel)]="item.roomId" name="roomId" class="form-select" (change)="onRoomChange()" required>
-              <option [ngValue]="null" disabled>-- Chọn phòng trống --</option>
-              <option *ngFor="let r of rooms" [value]="r.id">
-                Phòng {{ r.roomNumber }} — {{ r.roomTypeName }} ({{ r.price | number:'1.0-0' }}₫ / đêm • Sức chứa {{ r.capacity }} người)
-              </option>
-            </select>
-          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Chọn phòng nghỉ</mat-label>
+            <mat-select formControlName="roomId">
+              @for (r of rooms; track r.id) {
+                <mat-option [value]="r.id">Phòng {{ r.roomNumber }} — {{ r.roomTypeName }} ({{ r.price | number:'1.0-0' }}₫ / đêm • Sức chứa {{ r.capacity }} người)</mat-option>
+              }
+            </mat-select>
+            @if (form.controls.roomId.hasError('required') && form.controls.roomId.touched) {
+              <mat-error>Vui lòng chọn phòng.</mat-error>
+            }
+          </mat-form-field>
 
           <!-- Stay Dates with strict validation -->
           <div class="dates-row">
-            <div class="form-group">
-              <label for="checkInDate">
-                📅 Ngày nhận phòng <span class="required">*</span>
-              </label>
-              <input 
-                id="checkInDate" 
-                type="date" 
-                [(ngModel)]="item.checkInDate" 
-                [min]="todayStr"
-                (change)="onCheckInChange()" 
-                name="checkInDate" 
-                class="form-control" 
-                [class.is-invalid]="checkInError"
-                required
-              >
-              <span class="date-hint" *ngIf="!checkInError">Đã chọn: <strong>{{ item.checkInDate | vnDate }}</strong> (Tối thiểu từ hôm nay)</span>
-              <span class="date-error" *ngIf="checkInError">⚠️ {{ checkInError }}</span>
-            </div>
+            <mat-form-field appearance="outline">
+              <mat-label>📅 Ngày nhận phòng</mat-label>
+              <input matInput [matDatepicker]="checkInPicker" [min]="isEdit ? null : todayDate" formControlName="checkInDate">
+              <mat-datepicker-toggle matIconSuffix [for]="checkInPicker"></mat-datepicker-toggle>
+              <mat-datepicker #checkInPicker></mat-datepicker>
+              @if (form.controls.checkInDate.value) {
+                <mat-hint>Đã chọn: {{ form.controls.checkInDate.value | vnDate }} (Tối thiểu từ hôm nay)</mat-hint>
+              } @else {
+                <mat-error>Vui lòng chọn ngày nhận phòng.</mat-error>
+              }
+            </mat-form-field>
 
-            <div class="form-group">
-              <label for="checkOutDate">
-                📅 Ngày trả phòng <span class="required">*</span>
-              </label>
-              <input 
-                id="checkOutDate" 
-                type="date" 
-                [(ngModel)]="item.checkOutDate" 
-                [min]="minCheckOutStr"
-                (change)="onCheckOutChange()" 
-                name="checkOutDate" 
-                class="form-control" 
-                [class.is-invalid]="checkOutError"
-                required
-              >
-              <span class="date-hint" *ngIf="!checkOutError">Đã chọn: <strong>{{ item.checkOutDate | vnDate }}</strong> (Sau ngày nhận phòng ít nhất 1 ngày)</span>
-              <span class="date-error" *ngIf="checkOutError">⚠️ {{ checkOutError }}</span>
-            </div>
+            <mat-form-field appearance="outline">
+              <mat-label>📅 Ngày trả phòng</mat-label>
+              <input matInput [matDatepicker]="checkOutPicker" [min]="minCheckOutDate" formControlName="checkOutDate">
+              <mat-datepicker-toggle matIconSuffix [for]="checkOutPicker"></mat-datepicker-toggle>
+              <mat-datepicker #checkOutPicker></mat-datepicker>
+              @if (form.controls.checkOutDate.value) {
+                <mat-hint>Đã chọn: {{ form.controls.checkOutDate.value | vnDate }} (Sau ngày nhận phòng ít nhất 1 ngày)</mat-hint>
+              } @else {
+                <mat-error>Vui lòng chọn ngày trả phòng.</mat-error>
+              }
+            </mat-form-field>
           </div>
 
           <!-- General Date Alert if invalid -->
-          <div class="date-alert-banner" *ngIf="dateGeneralError">
-            <span>⚠️</span>
-            <p>{{ dateGeneralError }}</p>
-          </div>
+          @if (dateGeneralError) {
+            <div class="date-alert-banner">
+              <span>⚠️</span>
+              <p>{{ dateGeneralError }}</p>
+            </div>
+          }
 
           <!-- Status (Admin only when edit) -->
-          <div class="form-group" *ngIf="isEdit && !isCustomer">
-            <label for="status">Trạng thái đơn</label>
-            <select id="status" [(ngModel)]="item.status" name="status" class="form-select">
-              <option value="pending">🟡 Chờ xử lý / Đặt trước</option>
-              <option value="confirmed">🔵 Đã xác nhận giữ chỗ</option>
-              <option value="occupied">🟠 Khách đang lưu trú</option>
-              <option value="completed">🟢 Đã hoàn thành trả phòng</option>
-              <option value="cancelled">🔴 Đã hủy đơn</option>
-            </select>
-          </div>
+          @if (isEdit && !isCustomer) {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Trạng thái đơn</mat-label>
+              <mat-select formControlName="status">
+                <mat-option value="pending">🟡 Chờ xử lý / Đặt trước</mat-option>
+                <mat-option value="confirmed">🔵 Đã xác nhận giữ chỗ</mat-option>
+                <mat-option value="occupied">🟠 Khách đang lưu trú</mat-option>
+                <mat-option value="completed">🟢 Đã hoàn thành trả phòng</mat-option>
+                <mat-option value="cancelled">🔴 Đã hủy đơn</mat-option>
+              </mat-select>
+            </mat-form-field>
+          }
 
           <!-- Notes -->
-          <div class="form-group">
-            <label for="notes">Ghi chú & Yêu cầu đặc biệt (tùy chọn)</label>
-            <textarea 
-              id="notes" 
-              [(ngModel)]="item.notes" 
-              name="notes" 
-              rows="3" 
-              class="form-control" 
-              placeholder="VD: Nhận phòng sớm, kê thêm giường phụ, phòng tầng cao yên tĩnh..."
-            ></textarea>
-          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Ghi chú & Yêu cầu đặc biệt (tùy chọn)</mat-label>
+            <textarea matInput formControlName="notes" rows="3" placeholder="VD: Nhận phòng sớm, kê thêm giường phụ, phòng tầng cao yên tĩnh..."></textarea>
+          </mat-form-field>
 
           <div class="form-actions-row">
-            <button 
-              type="submit" 
-              class="btn btn-gold btn-lg" 
-              [disabled]="!isFormValid || submitting"
-            >
+            <button mat-raised-button color="primary" type="submit" class="btn-lg" [disabled]="form.invalid || submitting">
               {{ submitting ? 'Đang xử lý...' : (isEdit ? '💾 Cập nhật đơn đặt' : '✨ Xác nhận đặt phòng') }}
             </button>
-            <button type="button" class="btn btn-secondary btn-lg" (click)="cancel()">Hủy thao tác</button>
+            <button mat-stroked-button type="button" class="btn-lg" (click)="cancel()">Hủy thao tác</button>
           </div>
         </form>
 
@@ -160,14 +135,16 @@ function getNextDayString(dateStr: string): string {
             <h3>Chi tiết đặt phòng</h3>
 
             <!-- Room Mini Banner -->
-            <div class="summary-room-preview" *ngIf="selectedRoom">
-              <img [src]="getRoomImg(selectedRoom.roomTypeName, selectedRoom.id)" (error)="onImgError($event)" alt="Selected Room" class="summary-room-img">
-              <div class="summary-room-meta">
-                <span class="summary-room-badge">{{ selectedRoom.roomTypeName }}</span>
-                <h4>Phòng {{ selectedRoom.roomNumber }}</h4>
-                <span class="summary-room-price">{{ selectedRoom.price | number:'1.0-0' }}₫ <small>/ đêm</small></span>
+            @if (selectedRoom) {
+              <div class="summary-room-preview">
+                <img [src]="getRoomImg(selectedRoom.roomTypeName, selectedRoom.id)" (error)="onImgError($event)" alt="Selected Room" class="summary-room-img">
+                <div class="summary-room-meta">
+                  <span class="summary-room-badge">{{ selectedRoom.roomTypeName }}</span>
+                  <h4>Phòng {{ selectedRoom.roomNumber }}</h4>
+                  <span class="summary-room-price">{{ selectedRoom.price | number:'1.0-0' }}₫ <small>/ đêm</small></span>
+                </div>
               </div>
-            </div>
+            }
 
             <!-- Calculation Lines -->
             <div class="summary-breakdown">
@@ -204,31 +181,51 @@ function getNextDayString(dateStr: string): string {
   styleUrls: ['./booking-form.component.scss']
 })
 export class BookingFormComponent implements OnInit {
-  item: any = { customerId: null, roomId: null, checkInDate: '', checkOutDate: '', notes: '' };
+  private fb = inject(FormBuilder);
+  private destroyRef = inject(DestroyRef);
+  private snackBar = inject(MatSnackBar);
+  private route = inject(ActivatedRoute);
+
+  // isEdit/id được xác định NGAY tại đây (route.snapshot đọc được đồng bộ) để form chỉ cần
+  // khởi tạo group-validator ĐÚNG NGAY TỪ ĐẦU — tránh gọi lại setValidators() sau này
+  // (setValidators thay thế toàn bộ danh sách validator của group, dễ vô tình xoá mất
+  // validator khác nếu sau này có thêm validator thứ 2 ở cấp group).
+  isEdit = !!this.route.snapshot.paramMap.get('id');
+  id = +(this.route.snapshot.paramMap.get('id') || 0);
+
+  form = this.fb.nonNullable.group({
+    customerId: this.fb.control<number | null>(null, Validators.required),
+    roomId: this.fb.control<number | null>(null, Validators.required),
+    checkInDate: this.fb.control<Date | null>(null, Validators.required),
+    checkOutDate: this.fb.control<Date | null>(null, Validators.required),
+    status: this.fb.nonNullable.control('pending'),
+    notes: this.fb.nonNullable.control(''),
+  }, {
+    validators: dateRangeValidator({
+      checkInControlName: 'checkInDate',
+      checkOutControlName: 'checkOutDate',
+      // Khi sửa đơn đã tồn tại, cho phép ngày nhận phòng trong quá khứ (đơn đã tạo từ trước).
+      minDateToday: !this.isEdit,
+    }),
+  });
+
   customers: Customer[] = [];
   rooms: Room[] = [];
   selectedRoom: Room | null = null;
-  nightsCount: number = 1;
-  estimatedTotalPrice: number = 0;
-  isEdit = false;
-  id = 0;
+  nightsCount = 0;
+  estimatedTotalPrice = 0;
   isCustomer = false;
   submitting = false;
-  serverError = '';
 
-  // ── Date Validation State ──
-  todayStr: string = '';
-  minCheckOutStr: string = '';
-  checkInError: string = '';
-  checkOutError: string = '';
-  dateGeneralError: string = '';
+  todayDate = new Date();
+  minCheckOutDate: Date | null = null;
+  dateGeneralError = '';
 
   constructor(
     private service: BookingService,
     private custService: CustomerService,
     private roomService: RoomService,
     private auth: AuthService,
-    private route: ActivatedRoute,
     public router: Router
   ) {}
 
@@ -236,153 +233,105 @@ export class BookingFormComponent implements OnInit {
     const user = this.auth.getCurrentUser();
     this.isCustomer = user?.role === 'customer';
 
-    // 1. Initialize today string in local time (YYYY-MM-DD)
-    this.todayStr = getLocalDateString();
-
-    // Default dates (today and day after tomorrow)
-    const today = new Date();
-    const future = new Date();
-    future.setDate(today.getDate() + 2);
-    this.item.checkInDate = this.todayStr;
-    this.item.checkOutDate = getLocalDateString(future);
-    this.minCheckOutStr = getNextDayString(this.item.checkInDate);
-
     if (this.isCustomer) {
+      // Khách hàng tự đặt cho chính mình — không cần chọn customerId trên UI.
+      this.form.controls.customerId.clearValidators();
+      this.form.controls.customerId.updateValueAndValidity();
+
       this.custService.getProfile().subscribe({
-        next: (c) => { this.item.customerId = c.id; },
-        error: (err) => { console.error('Cannot load customer profile', err); }
+        next: (c) => this.form.controls.customerId.setValue(c.id),
+        error: (err) => console.error('Cannot load customer profile', err),
       });
     } else {
       this.custService.getAll().subscribe(d => this.customers = d);
     }
 
-    this.roomService.getAll().subscribe(d => {
-      this.rooms = d;
-      // Preselect room and dates if passed in queryParams
-      this.route.queryParams.subscribe(params => {
-        if (params['checkIn']) {
-          this.item.checkInDate = params['checkIn'];
-          this.minCheckOutStr = getNextDayString(this.item.checkInDate);
+    // Ngày mặc định: hôm nay -> 2 ngày sau.
+    const future = new Date();
+    future.setDate(future.getDate() + 2);
+    this.form.patchValue({ checkInDate: this.todayDate, checkOutDate: future });
+    this.minCheckOutDate = getNextDayLocal(this.todayDate);
+
+    // Tự động đẩy checkOutDate khi checkInDate đổi khiến khoảng ngày không còn hợp lệ.
+    this.form.controls.checkInDate.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(checkIn => {
+        if (!checkIn) return;
+        this.minCheckOutDate = getNextDayLocal(checkIn);
+        const checkOut = this.form.controls.checkOutDate.value;
+        if (checkOut && checkOut <= checkIn) {
+          this.form.controls.checkOutDate.setValue(this.minCheckOutDate, { emitEvent: false });
         }
-        if (params['checkOut']) {
-          this.item.checkOutDate = params['checkOut'];
-        }
-        if (params['roomId']) {
-          this.item.roomId = +params['roomId'];
-          this.onRoomChange();
-        } else if (d.length > 0 && !this.isEdit) {
-          this.item.roomId = d[0].id;
-          this.onRoomChange();
-        }
-        this.validateDates();
-        this.calculateStay();
       });
+
+    // Gộp roomId/checkInDate/checkOutDate/status thay đổi để tính lại tiền phòng + thông báo lỗi ngày.
+    this.form.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.recalc());
+
+    // Thay cho nested-subscribe trước đây (roomService.getAll().subscribe(d => route.queryParams.subscribe(...))):
+    // dùng switchMap để gộp 2 luồng bất đồng bộ thành 1, tránh subscribe lồng nhau.
+    this.roomService.getAll().pipe(
+      switchMap(rooms => this.route.queryParams.pipe(map(params => ({ rooms, params })))),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(({ rooms, params }) => {
+      this.rooms = rooms;
+
+      if (params['checkIn']) {
+        const d = parseLocalDate(params['checkIn']);
+        if (d) this.form.controls.checkInDate.setValue(d);
+      }
+      if (params['checkOut']) {
+        const d = parseLocalDate(params['checkOut']);
+        if (d) this.form.controls.checkOutDate.setValue(d);
+      }
+      if (params['roomId']) {
+        this.form.controls.roomId.setValue(+params['roomId']);
+      } else if (rooms.length > 0 && !this.isEdit) {
+        this.form.controls.roomId.setValue(rooms[0].id);
+      }
+      this.recalc();
     });
 
-    const p = this.route.snapshot.paramMap.get('id');
-    if (p) {
-      this.isEdit = true;
-      this.id = +p;
+    if (this.isEdit) {
       this.service.getById(this.id).subscribe(d => {
-        this.item = d;
-        this.minCheckOutStr = getNextDayString(this.item.checkInDate);
-        this.onRoomChange();
-        this.validateDates();
-        this.calculateStay();
+        this.form.patchValue({
+          customerId: d.customerId,
+          roomId: d.roomId,
+          checkInDate: parseLocalDate(d.checkInDate),
+          checkOutDate: parseLocalDate(d.checkOutDate),
+          status: d.status,
+          notes: d.notes ?? '',
+        });
+        this.recalc();
       });
-    } else {
-      this.validateDates();
-      this.calculateStay();
     }
   }
 
-  onRoomChange(): void {
-    this.selectedRoom = this.rooms.find(r => r.id === +this.item.roomId) || null;
-    this.calculateStay();
-  }
+  private recalc(): void {
+    const { roomId, checkInDate, checkOutDate } = this.form.getRawValue();
+    this.selectedRoom = this.rooms.find(r => r.id === roomId) || null;
 
-  // ── Date Change Event Handlers ──
-  onCheckInChange(): void {
-    this.serverError = '';
-    
-    // Check-in date cannot be in the past
-    if (this.item.checkInDate && this.item.checkInDate < this.todayStr) {
-      this.checkInError = `Ngày nhận phòng không thể trong quá khứ. Tối thiểu là hôm nay (${this.todayStr}).`;
-    } else {
-      this.checkInError = '';
-    }
-
-    // Update minimum possible checkout date
-    this.minCheckOutStr = getNextDayString(this.item.checkInDate);
-
-    // If Check-out is less than or equal to Check-in, auto-adjust Check-out to Check-in + 1 day
-    if (this.item.checkInDate && this.item.checkOutDate && this.item.checkOutDate <= this.item.checkInDate) {
-      this.item.checkOutDate = this.minCheckOutStr;
-    }
-
-    this.validateDates();
-    this.calculateStay();
-  }
-
-  onCheckOutChange(): void {
-    this.serverError = '';
-    this.validateDates();
-    this.calculateStay();
-  }
-
-  validateDates(): boolean {
-    this.checkInError = '';
-    this.checkOutError = '';
-    this.dateGeneralError = '';
-
-    if (!this.item.checkInDate) {
-      this.checkInError = 'Vui lòng chọn ngày nhận phòng.';
-      return false;
-    }
-
-    if (!this.item.checkOutDate) {
-      this.checkOutError = 'Vui lòng chọn ngày trả phòng.';
-      return false;
-    }
-
-    // Rule 1: Check-in >= Today (only for new bookings, allow existing bookings to be viewed)
-    if (!this.isEdit && this.item.checkInDate < this.todayStr) {
-      this.checkInError = `Ngày nhận phòng không thể trong quá khứ (${this.item.checkInDate} < ${this.todayStr}).`;
-      return false;
-    }
-
-    // Rule 2: Check-out > Check-in (cannot be equal or before)
-    if (this.item.checkOutDate <= this.item.checkInDate) {
-      this.checkOutError = `Ngày trả phòng (${this.item.checkOutDate}) phải lớn hơn ngày nhận phòng (${this.item.checkInDate}) ít nhất 1 ngày.`;
-      this.dateGeneralError = 'Thời gian lưu trú tối thiểu là 1 đêm. Vui lòng điều chỉnh lại ngày trả phòng.';
-      return false;
-    }
-
-    return true;
-  }
-
-  get isFormValid(): boolean {
-    const hasRoom = !!this.item.roomId;
-    const hasCustomer = this.isCustomer || !!this.item.customerId;
-    const datesValid = this.validateDates();
-    return hasRoom && hasCustomer && datesValid;
-  }
-
-  calculateStay(): void {
-    if (this.item.checkInDate && this.item.checkOutDate && this.item.checkOutDate > this.item.checkInDate) {
-      const inParts = this.item.checkInDate.split('-').map(Number);
-      const outParts = this.item.checkOutDate.split('-').map(Number);
-      const inDate = new Date(inParts[0], inParts[1] - 1, inParts[2]);
-      const outDate = new Date(outParts[0], outParts[1] - 1, outParts[2]);
-      const diffTime = outDate.getTime() - inDate.getTime();
-      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    if (checkInDate && checkOutDate && checkOutDate > checkInDate) {
+      const diffDays = Math.round((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
       this.nightsCount = diffDays > 0 ? diffDays : 1;
     } else {
       this.nightsCount = 0;
     }
+    this.estimatedTotalPrice = this.nightsCount * (this.selectedRoom?.price || 0);
 
-    const price = this.selectedRoom?.price || 0;
-    this.estimatedTotalPrice = this.nightsCount * price;
+    const errors = this.form.errors;
+    if (errors?.['checkInRequired']) {
+      this.dateGeneralError = 'Vui lòng chọn ngày nhận phòng.';
+    } else if (errors?.['checkOutRequired']) {
+      this.dateGeneralError = 'Vui lòng chọn ngày trả phòng.';
+    } else if (errors?.['checkOutBeforeCheckIn']) {
+      this.dateGeneralError = 'Thời gian lưu trú tối thiểu là 1 đêm. Vui lòng điều chỉnh lại ngày trả phòng.';
+    } else if (errors?.['checkInPast']) {
+      this.dateGeneralError = 'Ngày nhận phòng không thể trong quá khứ.';
+    } else {
+      this.dateGeneralError = '';
+    }
   }
 
   getRoomImg(typeName?: string, id: number = 0): string {
@@ -394,35 +343,43 @@ export class BookingFormComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (!this.validateDates()) {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
       return;
     }
 
     this.submitting = true;
-    this.serverError = '';
+    const raw = this.form.getRawValue();
+    const payload = {
+      customerId: raw.customerId,
+      roomId: raw.roomId,
+      checkInDate: getLocalDateString(raw.checkInDate!),
+      checkOutDate: getLocalDateString(raw.checkOutDate!),
+      status: raw.status,
+      notes: raw.notes,
+    };
 
-    const obs = this.isEdit ? this.service.update(this.id, this.item) : this.service.create(this.item);
+    const obs = this.isEdit ? this.service.update(this.id, payload) : this.service.create(payload);
     obs.subscribe({
       next: () => {
         this.submitting = false;
-        if (this.isCustomer) {
-          this.router.navigate(['/']);
-        } else {
-          this.router.navigate(['/bookings']);
-        }
+        this.router.navigate([this.isCustomer ? '/' : '/bookings']);
       },
       error: (err) => {
         this.submitting = false;
-        this.serverError = err.error?.message || 'Có lỗi xảy ra khi lưu đơn đặt phòng. Vui lòng kiểm tra lại.';
+        const message = err.error?.message || 'Có lỗi xảy ra khi lưu đơn đặt phòng. Vui lòng kiểm tra lại.';
+        this.snackBar.open(message, 'Đóng', { duration: 6000, panelClass: 'snackbar-error' });
       }
     });
   }
 
   cancel(): void {
-    if (this.isCustomer) {
-      this.router.navigate(['/']);
-    } else {
-      this.router.navigate(['/bookings']);
-    }
+    this.router.navigate([this.isCustomer ? '/' : '/bookings']);
   }
+}
+
+function getNextDayLocal(date: Date): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + 1);
+  return d;
 }

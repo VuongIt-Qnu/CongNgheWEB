@@ -1,0 +1,141 @@
+.room-detail-modal {
+  min-width: 480px;
+  max-width: 640px;
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 20px 24px 0;
+
+    h2 {
+      font-size: 20px;
+      margin-bottom: 2px;
+    }
+  }
+
+  .modal-body {
+    padding: 20px 24px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-height: 65vh;
+  }
+
+  .gallery-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    .main-gallery-img {
+      height: 300px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    .gallery-thumbs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+
+      img {
+        width: 72px;
+        height: 52px;
+        object-fit: cover;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        opacity: 0.6;
+        border: 2px solid transparent;
+        transition: var(--transition);
+
+        &.active, &:hover {
+          opacity: 1;
+          border-color: var(--gold);
+        }
+      }
+    }
+  }
+
+  .detail-key-facts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    background: var(--bg-surface-light);
+    padding: 16px;
+    border-radius: var(--radius-md);
+
+    .fact-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      .fact-label {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .fact-val {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-main);
+      }
+    }
+  }
+
+  .detail-description, .detail-amenities {
+    h4 {
+      font-size: 14px;
+      color: var(--gold);
+      margin-bottom: 8px;
+    }
+    p {
+      color: var(--text-body);
+      font-size: 13.5px;
+      line-height: 1.5;
+    }
+  }
+
+  .amenities-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+
+    .amenity-item {
+      font-size: 13px;
+      color: var(--text-body);
+      .amenity-check {
+        color: var(--gold);
+        font-weight: 700;
+        margin-right: 4px;
+      }
+    }
+  }
+
+  .modal-footer-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-subtle);
+
+    .modal-price {
+      display: flex;
+      flex-direction: column;
+      span {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+      strong {
+        font-size: 24px;
+      }
+    }
+  }
+}

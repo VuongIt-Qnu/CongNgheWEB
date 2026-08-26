@@ -1,3 +1,5 @@
+@use '../../../styles/mat-table-theme' as tableTheme;
+
 .page-container {
   display: flex;
   flex-direction: column;
@@ -34,47 +36,9 @@
   gap: 16px;
   align-items: center;
 
-  .search-input-wrap {
+  .search-field {
     flex: 1;
     max-width: 460px;
-    position: relative;
-    display: flex;
-    align-items: center;
-
-    .search-icon {
-      position: absolute;
-      left: 14px;
-      color: var(--text-dim);
-      font-size: 14px;
-    }
-
-    input {
-      width: 100%;
-      padding: 11px 36px 11px 40px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      color: #fff;
-      font-size: 14px;
-      transition: var(--transition);
-
-      &:focus {
-        border-color: var(--gold);
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(198, 169, 106, 0.12);
-      }
-    }
-
-    .btn-clear {
-      position: absolute;
-      right: 12px;
-      background: transparent;
-      border: none;
-      color: var(--text-dim);
-      cursor: pointer;
-      font-size: 12px;
-      &:hover { color: #fff; }
-    }
   }
 }
 
@@ -84,6 +48,7 @@
   border-radius: var(--radius-lg);
   overflow-x: auto;
   box-shadow: var(--shadow-sm);
+  @include tableTheme.mat-table-skin;
 }
 
 .customer-avatar-cell {
@@ -151,16 +116,13 @@
   gap: 8px;
 }
 
-.empty-table-cell {
-  padding: 48px !important;
+.empty-state {
+  padding: 48px;
   text-align: center;
-
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    color: var(--text-muted);
-    span { font-size: 32px; }
-  }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  span { font-size: 32px; }
 }

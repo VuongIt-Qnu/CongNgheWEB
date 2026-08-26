@@ -10,7 +10,8 @@ namespace backend.Models
         [Column("id")]
         public int Id { get; set; }
 
-        [Required]
+        // MaxLength bắt buộc: có unique index (OnModelCreating) — xem giải thích ở User.Email.
+        [Required, MaxLength(20)]
         [Column("room_number")]
         public string RoomNumber { get; set; } = string.Empty;
 
@@ -24,6 +25,7 @@ namespace backend.Models
         [Column("capacity")]
         public int Capacity { get; set; } = 1;
 
+        [MaxLength(20)]
         [Column("status")]
         public string Status { get; set; } = "available";
 

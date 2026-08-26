@@ -10,7 +10,7 @@ namespace backend.Models
         [Column("id")]
         public int Id { get; set; }
 
-        [Required]
+        [Required, MaxLength(150)]
         [Column("name")]
         public string Name { get; set; } = string.Empty;
 

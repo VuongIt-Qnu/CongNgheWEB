@@ -89,8 +89,28 @@
   color: var(--status-danger);
 }
 
+.full-width {
+  width: 100%;
+}
+
 .btn-block {
   width: 100%;
+}
+
+.submit-btn {
+  height: 48px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.btn-spinner {
+  ::ng-deep circle {
+    stroke: currentColor;
+  }
 }
 
 .auth-footer {

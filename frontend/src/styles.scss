@@ -1,4 +1,83 @@
+// `@use` phải đứng trước MỌI rule khác trong file Sass (kể cả @import CSS thuần bên dưới).
+@use '@angular/material' as mat;
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
+
+// ── ANGULAR MATERIAL — CUSTOM THEME KHỚP PALETTE VÀNG/ĐEN CỦA RESORT ──
+// Xem: https://material.angular.dev/guide/theming
+// Bước 1: dùng mat.theme() với 1 palette M3 có sẵn gần tông màu vàng nhất (yellow) làm nền cấu trúc
+//         (sinh đủ token surface/outline/error... cho dark mode).
+// Bước 2: dùng mat.theme-overrides() để ghi đè CHÍNH XÁC các token quan trọng bằng chính biến CSS
+//         (--gold, --bg-*, --text-*...) đã khai báo trong :root bên dưới, để không phải định nghĩa
+//         lại giá trị hex ở 2 nơi và toàn bộ CSS cũ dùng var(--gold)... vẫn hoạt động nguyên vẹn.
+
+html {
+  @include mat.theme((
+    color: (
+      theme-type: dark,
+      primary: mat.$yellow-palette,
+      tertiary: mat.$blue-palette,
+    ),
+    typography: (
+      plain-family: 'Inter',
+      brand-family: 'Playfair Display',
+    ),
+    density: 0,
+  ));
+
+  @include mat.theme-overrides((
+    // ── Primary (Gold) ──
+    primary: var(--gold),
+    on-primary: #06101e,
+    primary-container: var(--gold-dark),
+    on-primary-container: #06101e,
+    inverse-primary: var(--gold-dark),
+    primary-fixed: var(--gold-light),
+    primary-fixed-dim: var(--gold),
+    on-primary-fixed: #06101e,
+    on-primary-fixed-variant: #06101e,
+
+    // ── Secondary (dùng lại tông vàng nhạt hơn cho các control phụ) ──
+    secondary: var(--gold-light),
+    on-secondary: #06101e,
+    secondary-container: var(--bg-card),
+    on-secondary-container: var(--text-main),
+
+    // ── Tertiary (map theo --status-info để dùng cho các badge/info accent) ──
+    tertiary: var(--status-info),
+    on-tertiary: #06101e,
+    tertiary-container: var(--status-info-bg),
+    on-tertiary-container: var(--status-info),
+
+    // ── Error (map theo --status-danger) ──
+    error: var(--status-danger),
+    on-error: #ffffff,
+    error-container: var(--status-danger-bg),
+    on-error-container: var(--status-danger),
+
+    // ── Background / Surface ──
+    background: var(--bg-main),
+    on-background: var(--text-main),
+    surface: var(--bg-surface),
+    on-surface: var(--text-main),
+    on-surface-variant: var(--text-muted),
+    surface-variant: var(--bg-surface-light),
+    surface-container-lowest: var(--bg-main),
+    surface-container-low: var(--bg-surface),
+    surface-container: var(--bg-surface-light),
+    surface-container-high: var(--bg-card),
+    surface-container-highest: var(--bg-card-hover),
+    surface-bright: var(--bg-card-hover),
+    surface-dim: var(--bg-main),
+    inverse-surface: var(--text-main),
+    inverse-on-surface: var(--bg-main),
+
+    // ── Đường viền / bóng đổ ──
+    outline: var(--border-subtle),
+    outline-variant: var(--border-gold),
+    scrim: rgba(6, 16, 30, 0.85),
+  ));
+}
 
 // ── DESIGN TOKENS & CSS VARIABLES ──
 :root {
@@ -352,3 +431,30 @@ h1, h2, h3, h4, h5, h6 {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+// ── MAT-SNACKBAR — style toàn cục (snackbar render ngoài component qua CDK overlay) ──
+.snackbar-error {
+  --mdc-snackbar-container-color: var(--status-danger-bg);
+  --mdc-snackbar-supporting-text-color: #fca5a5;
+  --mat-snack-bar-button-color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.snackbar-success {
+  --mdc-snackbar-container-color: var(--status-success-bg);
+  --mdc-snackbar-supporting-text-color: var(--status-success);
+  --mat-snack-bar-button-color: var(--status-success);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+// ── MAT-DIALOG — panel dùng chung (dialog render ngoài component qua CDK overlay) ──
+.aurora-dialog-panel .mat-mdc-dialog-container {
+  --mdc-dialog-container-color: var(--bg-surface);
+  --mdc-dialog-supporting-text-color: var(--text-body);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+// html/body cần height:100% để CDK Overlay (mat-dialog, mat-select, mat-datepicker...) định vị đúng.
+html, body { height: 100%; }

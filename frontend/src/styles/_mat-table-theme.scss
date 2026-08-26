@@ -1,0 +1,35 @@
+// Mixin dùng chung để "skin" mat-table theo đúng theme vàng/đen của resort
+// (thay cho .table-modern cũ). Include trong scss của từng list component:
+//   @use '../../../styles/mat-table-theme' as tableTheme;
+//   .card-table-wrap { @include tableTheme.mat-table-skin; }
+@mixin mat-table-skin {
+  ::ng-deep {
+    .mat-mdc-table {
+      background: transparent;
+      width: 100%;
+    }
+
+    .mat-mdc-header-row {
+      background: var(--bg-surface-light);
+    }
+
+    .mat-mdc-header-cell {
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom-color: var(--border-subtle);
+    }
+
+    .mat-mdc-cell {
+      color: var(--text-body);
+      font-size: 13.5px;
+      border-bottom-color: var(--border-subtle);
+    }
+
+    .mat-mdc-row:hover .mat-mdc-cell {
+      background: rgba(255, 255, 255, 0.02);
+    }
+  }
+}

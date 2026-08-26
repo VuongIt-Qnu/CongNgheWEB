@@ -1,14 +1,24 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
+import { MatTableModule } from '@angular/material/table';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { CustomerService } from '../../services/customer.service';
 import { Customer } from '../../models/models';
 
 @Component({
   selector: 'app-customer-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [
+    CommonModule, RouterModule, ReactiveFormsModule,
+    MatTableModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule
+  ],
   template: `
     <div class="page-container">
       <div class="page-header-row">
@@ -17,97 +27,112 @@ import { Customer } from '../../models/models';
           <h1>Danh Sách Khách Hàng</h1>
           <p>Quản lý hồ sơ thông tin cá nhân, liên hệ và lịch sử các khách hàng lưu trú tại Resort.</p>
         </div>
-        <a routerLink="/customers/new" class="btn btn-gold">+ Thêm khách hàng mới</a>
+        <a mat-raised-button color="primary" routerLink="/customers/new">+ Thêm khách hàng mới</a>
       </div>
 
       <!-- Search Toolbar -->
       <div class="table-toolbar">
-        <div class="search-input-wrap">
-          <span class="search-icon">🔍</span>
-          <input 
-            type="text" 
-            [(ngModel)]="searchTerm" 
-            (ngModelChange)="load()" 
-            placeholder="Tìm theo họ tên, số điện thoại, email, số CCCD..."
-          >
-          <button *ngIf="searchTerm" (click)="searchTerm = ''; load()" class="btn-clear">✕</button>
-        </div>
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput type="text" [formControl]="searchControl" placeholder="Tìm theo họ tên, số điện thoại, email, số CCCD...">
+          @if (searchControl.value) {
+            <button mat-icon-button matSuffix type="button" (click)="searchControl.setValue('')" aria-label="Xóa tìm kiếm">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
       </div>
 
       <!-- Table Card -->
       <div class="card-table-wrap">
-        <table class="table-modern">
-          <thead>
-            <tr>
-              <th>Họ & Tên khách hàng</th>
-              <th>Số điện thoại</th>
-              <th>Địa chỉ Email</th>
-              <th>Số CMND / CCCD</th>
-              <th>Địa chỉ cư trú</th>
-              <th style="text-align: right;">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let c of customers">
-              <td>
-                <div class="customer-avatar-cell">
-                  <div class="avatar-badge">{{ getInitials(c.name) }}</div>
-                  <div class="customer-meta">
-                    <strong>{{ c.name }}</strong>
-                    <span class="sub-id">#CUST-{{ c.id }}</span>
-                  </div>
+        <table mat-table [dataSource]="customers" class="table-modern">
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Họ & Tên khách hàng</th>
+            <td mat-cell *matCellDef="let c">
+              <div class="customer-avatar-cell">
+                <div class="avatar-badge">{{ getInitials(c.name) }}</div>
+                <div class="customer-meta">
+                  <strong>{{ c.name }}</strong>
+                  <span class="sub-id">#CUST-{{ c.id }}</span>
                 </div>
-              </td>
-              <td>
-                <span class="phone-text">{{ c.phone || 'Chưa cập nhật' }}</span>
-              </td>
-              <td>
-                <span class="email-text">{{ c.email || 'Chưa cập nhật' }}</span>
-              </td>
-              <td>
-                <span class="idcard-pill">{{ c.idCard || 'N/A' }}</span>
-              </td>
-              <td class="address-cell">
-                <span>{{ c.address || 'Chưa cập nhật' }}</span>
-              </td>
-              <td style="text-align: right;">
-                <div class="row-actions">
-                  <a [routerLink]="['/customers/edit', c.id]" class="btn btn-secondary btn-sm" title="Chỉnh sửa">
-                    ✏️ Sửa
-                  </a>
-                  <button (click)="delete(c.id)" class="btn btn-danger btn-sm" title="Xóa khách hàng">
-                    🗑️ Xóa
-                  </button>
-                </div>
-              </td>
-            </tr>
-            <tr *ngIf="customers.length === 0">
-              <td colspan="6" class="empty-table-cell">
-                <div class="empty-state">
-                  <span>👥</span>
-                  <p>Không tìm thấy hồ sơ khách hàng nào.</p>
-                </div>
-              </td>
-            </tr>
-          </tbody>
+              </div>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="phone">
+            <th mat-header-cell *matHeaderCellDef>Số điện thoại</th>
+            <td mat-cell *matCellDef="let c"><span class="phone-text">{{ c.phone || 'Chưa cập nhật' }}</span></td>
+          </ng-container>
+
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>Địa chỉ Email</th>
+            <td mat-cell *matCellDef="let c"><span class="email-text">{{ c.email || 'Chưa cập nhật' }}</span></td>
+          </ng-container>
+
+          <ng-container matColumnDef="idCard">
+            <th mat-header-cell *matHeaderCellDef>Số CMND / CCCD</th>
+            <td mat-cell *matCellDef="let c"><span class="idcard-pill">{{ c.idCard || 'N/A' }}</span></td>
+          </ng-container>
+
+          <ng-container matColumnDef="address">
+            <th mat-header-cell *matHeaderCellDef>Địa chỉ cư trú</th>
+            <td mat-cell *matCellDef="let c" class="address-cell">{{ c.address || 'Chưa cập nhật' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef style="text-align: right;">Thao tác</th>
+            <td mat-cell *matCellDef="let c" style="text-align: right;">
+              <div class="row-actions">
+                <a mat-stroked-button [routerLink]="['/customers/edit', c.id]" title="Chỉnh sửa">
+                  <mat-icon>edit</mat-icon> Sửa
+                </a>
+                <button mat-button color="warn" (click)="delete(c.id)" title="Xóa khách hàng">
+                  <mat-icon>delete</mat-icon> Xóa
+                </button>
+              </div>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns;"></tr>
         </table>
+
+        @if (customers.length === 0) {
+          <div class="empty-state">
+            <span>👥</span>
+            <p>Không tìm thấy hồ sơ khách hàng nào.</p>
+          </div>
+        }
       </div>
     </div>
   `,
   styleUrls: ['./customer-list.component.scss']
 })
 export class CustomerListComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
   customers: Customer[] = [];
-  searchTerm = '';
+  searchControl = new FormControl('', { nonNullable: true });
+  columns = ['name', 'phone', 'email', 'idCard', 'address', 'actions'];
 
   constructor(private service: CustomerService) {}
 
   ngOnInit(): void {
     this.load();
+
+    // debounceTime + distinctUntilChanged: giảm số request khi gõ nhanh.
+    // switchMap: huỷ request cũ khi có request mới, tránh trường hợp response chậm của
+    // từ khoá cũ trả về sau và ghi đè nhầm lên kết quả của từ khoá mới hơn.
+    this.searchControl.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(term => this.service.getAll(term || undefined)),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(d => this.customers = d);
   }
 
   load(): void {
-    this.service.getAll(this.searchTerm || undefined).subscribe(d => this.customers = d);
+    this.service.getAll(this.searchControl.value || undefined).subscribe(d => this.customers = d);
   }
 
   getInitials(name?: string): string {

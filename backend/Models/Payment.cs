@@ -23,23 +23,28 @@ namespace backend.Models
         public double Amount { get; set; }
 
         /// <summary>cash | bank_transfer | credit_card</summary>
+        [MaxLength(20)]
         [Column("method")]
         public string Method { get; set; } = "cash";
 
         /// <summary>pending | completed | failed | refunded</summary>
+        [MaxLength(20)]
         [Column("status")]
         public string Status { get; set; } = "pending";
 
         /// <summary>Mã giao dịch tự sinh, dùng để tra cứu/đối soát.</summary>
+        [MaxLength(50)]
         [Column("transaction_code")]
         public string? TransactionCode { get; set; }
 
         [Column("notes")]
         public string? Notes { get; set; }
 
+        [MaxLength(30)]
         [Column("created_at")]
         public string? CreatedAt { get; set; }
 
+        [MaxLength(30)]
         [Column("paid_at")]
         public string? PaidAt { get; set; }
 

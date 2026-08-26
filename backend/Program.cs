@@ -7,10 +7,18 @@ using backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── Database ──
+// ── Database (MySQL qua Pomelo.EntityFrameworkCore.MySql) ──
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Server=localhost;Port=3306;Database=aurora_resort;User=root;Password=;TreatTinyAsBoolean=false;";
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? "Data Source=hotel.db"));
+    // Version cố định (không dùng ServerVersion.AutoDetect()) — AutoDetect bắt buộc kết nối
+    // được tới server NGAY khi cấu hình DbContext, kể cả lúc chạy `dotnet ef migrations add`,
+    // gây bất tiện khi máy dev chưa bật MySQL. 8.0.30 khớp MySQL Community Server phổ biến hiện nay.
+    // ⚠️ Nếu server thật của bạn là MariaDB (XAMPP bản mới thường bundle MariaDB thay vì MySQL),
+    //    đổi dòng dưới thành: new MariaDbServerVersion(new Version(10, 4, 32))
+    //    (xem đúng version bằng lệnh `SELECT VERSION();` hoặc trong phpMyAdmin).
+    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 30))));
 
 // ── Services (Dependency Injection) ──
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -60,11 +68,13 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// ── Tạo Database & Seed Data ──
+// ── Áp dụng Migrations & Seed Data ──
+// Database.Migrate() (thay cho EnsureCreated()) cho phép quản lý phiên bản schema
+// qua các file trong Migrations/, hỗ trợ cập nhật schema an toàn khi Model thay đổi sau này.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
 }
 
 // ── Middleware Pipeline ──

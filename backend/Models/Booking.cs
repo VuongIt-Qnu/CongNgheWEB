@@ -16,14 +16,15 @@ namespace backend.Models
         [Column("room_id")]
         public int RoomId { get; set; }
 
-        [Required]
+        [Required, MaxLength(10)]
         [Column("check_in_date")]
         public string CheckInDate { get; set; } = string.Empty;
 
-        [Required]
+        [Required, MaxLength(10)]
         [Column("check_out_date")]
         public string CheckOutDate { get; set; } = string.Empty;
 
+        [MaxLength(20)]
         [Column("status")]
         public string Status { get; set; } = "pending";
 
@@ -33,9 +34,11 @@ namespace backend.Models
         [Column("notes")]
         public string? Notes { get; set; }
 
+        [MaxLength(30)]
         [Column("created_at")]
         public string? CreatedAt { get; set; }
 
+        [MaxLength(30)]
         [Column("updated_at")]
         public string? UpdatedAt { get; set; }
 

@@ -34,6 +34,10 @@
   box-shadow: var(--shadow-sm);
 }
 
+.full-width {
+  width: 100%;
+}
+
 .required {
   color: var(--status-danger);
 }

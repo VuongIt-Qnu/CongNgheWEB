@@ -1,53 +1,43 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, FormBuilder } from '@angular/forms';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { RoomService } from '../../services/room.service';
 import { BookingService } from '../../services/booking.service';
 import { CustomerService } from '../../services/customer.service';
 import { HotelServiceService } from '../../services/hotel-service.service';
 import { AuthService } from '../../services/auth.service';
 import { RoomTypeService } from '../../services/room-type.service';
-import { Room, Booking, HotelService, RoomType } from '../../models/models';
+import { Room, Booking, HotelService, RoomType, User } from '../../models/models';
 import { VnDatePipe } from '../../pipes/vn-date.pipe';
 import { formatVNDate } from '../../utils/date-format';
 import { BOOKING_STATUS_MAP } from '../../pipes/booking-status.pipe';
 import { ROOM_STATUS_MAP } from '../../pipes/room-status.pipe';
+import { dateRangeValidator, getLocalDateString, getNextDayString } from '../../utils/date-range.validator';
+import { RoomDetailDialogComponent } from './room-detail-dialog/room-detail-dialog.component';
 import {
   getPrimaryRoomImage,
-  getRoomImages,
   getRoomAmenities,
   getRoomRating,
   handleImageFallback,
   RESORT_HERO_IMAGE
 } from '../../utils/room-images';
 
-function getLocalDateString(date: Date = new Date()): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function getNextDayString(dateStr: string): string {
-  if (!dateStr) return '';
-  const parts = dateStr.split('-').map(Number);
-  const d = new Date(parts[0], parts[1] - 1, parts[2]);
-  d.setDate(d.getDate() + 1);
-  return getLocalDateString(d);
-}
-
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, VnDatePipe],
+  imports: [CommonModule, RouterModule, FormsModule, VnDatePipe, MatDialogModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
 export class DashboardComponent implements OnInit {
+  private dialog = inject(MatDialog);
+  private fb = inject(FormBuilder);
+
   // Common state
   isCustomer = false;
-  currentUser: any = null;
+  currentUser: User | null = null;
   heroImage = RESORT_HERO_IMAGE;
 
   // Admin Dashboard stats
@@ -77,13 +67,6 @@ export class DashboardComponent implements OnInit {
   hasSearched: boolean = false;
   searchResultCount: number = 0;
   searchValidationError: string = '';
-
-  // Room Detail Modal state
-  selectedRoom: Room | null = null;
-  selectedRoomGallery: string[] = [];
-  activeGalleryImage: string = '';
-  selectedRoomAmenities: string[] = [];
-  selectedRoomRating: { score: number; count: number } = { score: 5.0, count: 100 };
 
   constructor(
     private roomService: RoomService,
@@ -183,12 +166,26 @@ export class DashboardComponent implements OnInit {
   performSearch(): void {
     this.searchValidationError = '';
 
-    // Validate dates
-    if (this.searchCheckIn < this.todayStr) {
+    // Dùng chung dateRangeValidator (utils/date-range.validator.ts) thay vì so sánh thủ công lặp lại —
+    // cùng logic đang áp dụng cho checkInDate/checkOutDate của booking-form.
+    const group = this.fb.group({
+      checkInDate: [this.searchCheckIn],
+      checkOutDate: [this.searchCheckOut],
+    });
+    const errors = dateRangeValidator({ minDateToday: true })(group);
+    if (errors?.['checkInRequired']) {
+      this.searchValidationError = 'Vui lòng chọn ngày nhận phòng.';
+      return;
+    }
+    if (errors?.['checkOutRequired']) {
+      this.searchValidationError = 'Vui lòng chọn ngày trả phòng.';
+      return;
+    }
+    if (errors?.['checkInPast']) {
       this.searchValidationError = 'Ngày nhận phòng không thể trong quá khứ.';
       return;
     }
-    if (this.searchCheckOut <= this.searchCheckIn) {
+    if (errors?.['checkOutBeforeCheckIn']) {
       this.searchValidationError = 'Ngày trả phòng phải sau ngày nhận phòng ít nhất 1 ngày.';
       return;
     }
@@ -267,20 +264,18 @@ export class DashboardComponent implements OnInit {
     handleImageFallback(event);
   }
 
+  /** Mở dialog chi tiết phòng (thay cho modal tự chế trước đây) */
   openRoomDetail(room: Room): void {
-    this.selectedRoom = room;
-    this.selectedRoomGallery = getRoomImages(room.roomTypeName);
-    this.activeGalleryImage = this.selectedRoomGallery[0];
-    this.selectedRoomAmenities = getRoomAmenities(room.roomTypeName);
-    this.selectedRoomRating = getRoomRating(room.id);
-  }
+    const ref = this.dialog.open(RoomDetailDialogComponent, {
+      data: { room },
+      panelClass: 'aurora-dialog-panel',
+    });
 
-  closeRoomDetail(): void {
-    this.selectedRoom = null;
-  }
-
-  setGalleryImage(img: string): void {
-    this.activeGalleryImage = img;
+    ref.afterClosed().subscribe(result => {
+      if (result?.bookRoomId) {
+        this.bookRoomDirect(result.bookRoomId);
+      }
+    });
   }
 
   /** Helper: Trả về label tiếng Việt cho booking status */

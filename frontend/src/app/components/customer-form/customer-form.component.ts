@@ -1,13 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
 import { CustomerService } from '../../services/customer.service';
 
 @Component({
   selector: 'app-customer-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   template: `
     <div class="form-container">
       <div class="form-header">
@@ -16,77 +19,47 @@ import { CustomerService } from '../../services/customer.service';
         <p>Cập nhật họ tên, thông tin liên lạc và giấy tờ tùy thân của khách lưu trú.</p>
       </div>
 
-      <form (ngSubmit)="onSubmit()" class="form-card-main">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="form-card-main">
         <div class="form-grid-2">
-          <div class="form-group">
-            <label for="name">Họ và tên khách hàng <span class="required">*</span></label>
-            <input 
-              id="name" 
-              type="text" 
-              [(ngModel)]="item.name" 
-              name="name" 
-              class="form-control" 
-              placeholder="VD: Nguyễn Văn A" 
-              required
-            >
-          </div>
+          <mat-form-field appearance="outline">
+            <mat-label>Họ và tên khách hàng</mat-label>
+            <input matInput type="text" formControlName="name" placeholder="VD: Nguyễn Văn A">
+            @if (form.controls.name.hasError('required') && form.controls.name.touched) {
+              <mat-error>Vui lòng nhập họ tên.</mat-error>
+            }
+          </mat-form-field>
 
-          <div class="form-group">
-            <label for="phone">Số điện thoại liên hệ</label>
-            <input 
-              id="phone" 
-              type="text" 
-              [(ngModel)]="item.phone" 
-              name="phone" 
-              class="form-control" 
-              placeholder="VD: 0912 345 678"
-            >
-          </div>
+          <mat-form-field appearance="outline">
+            <mat-label>Số điện thoại liên hệ</mat-label>
+            <input matInput type="text" formControlName="phone" placeholder="VD: 0912 345 678">
+          </mat-form-field>
         </div>
 
         <div class="form-grid-2">
-          <div class="form-group">
-            <label for="email">Địa chỉ Email</label>
-            <input 
-              id="email" 
-              type="email" 
-              [(ngModel)]="item.email" 
-              name="email" 
-              class="form-control" 
-              placeholder="VD: nguyenvana@gmail.com"
-            >
-          </div>
+          <mat-form-field appearance="outline">
+            <mat-label>Địa chỉ Email</mat-label>
+            <input matInput type="email" formControlName="email" placeholder="VD: nguyenvana@gmail.com">
+            @if (form.controls.email.hasError('email') && form.controls.email.touched) {
+              <mat-error>Email không đúng định dạng.</mat-error>
+            }
+          </mat-form-field>
 
-          <div class="form-group">
-            <label for="idCard">Số CMND / Thẻ CCCD / Hộ chiếu</label>
-            <input 
-              id="idCard" 
-              type="text" 
-              [(ngModel)]="item.idCard" 
-              name="idCard" 
-              class="form-control" 
-              placeholder="VD: 079099001234"
-            >
-          </div>
+          <mat-form-field appearance="outline">
+            <mat-label>Số CMND / Thẻ CCCD / Hộ chiếu</mat-label>
+            <input matInput type="text" formControlName="idCard" placeholder="VD: 079099001234">
+          </mat-form-field>
         </div>
 
-        <div class="form-group">
-          <label for="address">Địa chỉ thường trú / Tỉnh Thành</label>
-          <input 
-            id="address" 
-            type="text" 
-            [(ngModel)]="item.address" 
-            name="address" 
-            class="form-control" 
-            placeholder="VD: Quận 1, TP. Hồ Chí Minh"
-          >
-        </div>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Địa chỉ thường trú / Tỉnh Thành</mat-label>
+          <input matInput type="text" formControlName="address" placeholder="VD: Quận 1, TP. Hồ Chí Minh">
+        </mat-form-field>
 
         <div class="form-actions-row">
-          <button type="submit" class="btn btn-gold btn-lg" [disabled]="!item.name">
+          <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid">
             {{ isEdit ? '💾 Lưu thay đổi' : '✨ Tạo hồ sơ khách hàng' }}
           </button>
-          <button type="button" class="btn btn-secondary btn-lg" (click)="router.navigate(['/customers'])">
+          <button mat-stroked-button type="button" (click)="router.navigate(['/customers'])">
             Hủy thao tác
           </button>
         </div>
@@ -96,7 +69,16 @@ import { CustomerService } from '../../services/customer.service';
   styleUrls: ['./customer-form.component.scss']
 })
 export class CustomerFormComponent implements OnInit {
-  item: any = { name: '', phone: '', email: '', idCard: '', address: '' };
+  private fb = inject(FormBuilder);
+
+  form = this.fb.nonNullable.group({
+    name: ['', Validators.required],
+    phone: [''],
+    email: ['', Validators.email],
+    idCard: [''],
+    address: [''],
+  });
+
   isEdit = false;
   id = 0;
 
@@ -111,12 +93,23 @@ export class CustomerFormComponent implements OnInit {
     if (p) {
       this.isEdit = true;
       this.id = +p;
-      this.service.getById(this.id).subscribe(d => this.item = d);
+      this.service.getById(this.id).subscribe(d => this.form.patchValue({
+        name: d.name,
+        phone: d.phone ?? '',
+        email: d.email ?? '',
+        idCard: d.idCard ?? '',
+        address: d.address ?? '',
+      }));
     }
   }
 
   onSubmit(): void {
-    const o = this.isEdit ? this.service.update(this.id, this.item) : this.service.create(this.item);
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    const value = this.form.getRawValue();
+    const o = this.isEdit ? this.service.update(this.id, value) : this.service.create(value);
     o.subscribe(() => this.router.navigate(['/customers']));
   }
 }

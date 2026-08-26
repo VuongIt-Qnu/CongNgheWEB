@@ -1,13 +1,21 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [
+    CommonModule, ReactiveFormsModule, RouterModule,
+    MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule
+  ],
   template: `
     <div class="auth-page-container">
       <div class="auth-card-glass">
@@ -29,35 +37,37 @@ import { AuthService } from '../../services/auth.service';
           <p>{{ error }}</p>
         </div>
 
-        <form (ngSubmit)="onSubmit()" class="auth-form">
-          <div class="form-group">
-            <label for="login-email">Địa chỉ Email <span class="req">*</span></label>
-            <input 
-              type="email" 
-              id="login-email" 
-              [(ngModel)]="email" 
-              name="email" 
-              class="form-control" 
-              required 
-              placeholder="VD: admin@example.com"
-            >
-          </div>
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Địa chỉ Email</mat-label>
+            <input matInput type="email" formControlName="email" placeholder="VD: admin@example.com" autocomplete="email">
+            <mat-icon matSuffix>mail</mat-icon>
+            @if (form.controls.email.hasError('required') && form.controls.email.touched) {
+              <mat-error>Vui lòng nhập email.</mat-error>
+            }
+            @if (form.controls.email.hasError('email') && form.controls.email.touched) {
+              <mat-error>Email không đúng định dạng.</mat-error>
+            }
+          </mat-form-field>
 
-          <div class="form-group">
-            <label for="login-password">Mật khẩu <span class="req">*</span></label>
-            <input 
-              type="password" 
-              id="login-password" 
-              [(ngModel)]="password" 
-              name="password" 
-              class="form-control" 
-              required 
-              placeholder="••••••••"
-            >
-          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Mật khẩu</mat-label>
+            <input matInput [type]="showPassword ? 'text' : 'password'" formControlName="password" placeholder="••••••••" autocomplete="current-password">
+            <button mat-icon-button matSuffix type="button" (click)="showPassword = !showPassword" [attr.aria-label]="'Hiện/ẩn mật khẩu'">
+              <mat-icon>{{ showPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+            @if (form.controls.password.hasError('required') && form.controls.password.touched) {
+              <mat-error>Vui lòng nhập mật khẩu.</mat-error>
+            }
+          </mat-form-field>
 
-          <button type="submit" id="login-submit" class="btn btn-gold btn-lg btn-block" [disabled]="loading || !email || !password">
-            {{ loading ? 'Đang xác thực tài khoản...' : 'Đăng nhập vào hệ thống' }}
+          <button mat-raised-button color="primary" type="submit" id="login-submit" class="btn-block submit-btn" [disabled]="loading || form.invalid">
+            @if (loading) {
+              <mat-spinner diameter="20" class="btn-spinner"></mat-spinner>
+              <span>Đang xác thực tài khoản...</span>
+            } @else {
+              <span>Đăng nhập vào hệ thống</span>
+            }
           </button>
         </form>
 
@@ -70,17 +80,29 @@ import { AuthService } from '../../services/auth.service';
   styleUrls: ['./login.component.scss']
 })
 export class LoginComponent {
-  email = '';
-  password = '';
+  private fb = inject(FormBuilder);
+  private auth = inject(AuthService);
+  private router = inject(Router);
+
+  form = this.fb.nonNullable.group({
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', Validators.required],
+  });
+
   error = '';
   loading = false;
-
-  constructor(private auth: AuthService, private router: Router) {}
+  showPassword = false;
 
   onSubmit(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
     this.loading = true;
     this.error = '';
-    this.auth.login(this.email, this.password).subscribe({
+    const { email, password } = this.form.getRawValue();
+    this.auth.login(email, password).subscribe({
       next: () => {
         this.router.navigate(['/']);
       },

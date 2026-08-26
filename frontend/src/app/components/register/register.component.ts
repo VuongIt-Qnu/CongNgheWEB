@@ -1,13 +1,21 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [
+    CommonModule, ReactiveFormsModule, RouterModule,
+    MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule
+  ],
   template: `
     <div class="auth-page-container">
       <div class="auth-card-glass">
@@ -29,61 +37,52 @@ import { AuthService } from '../../services/auth.service';
           <p>{{ error }}</p>
         </div>
 
-        <form (ngSubmit)="onSubmit()" class="auth-form">
-          <div class="form-group">
-            <label for="reg-name">Họ và tên <span class="req">*</span></label>
-            <input 
-              type="text" 
-              id="reg-name" 
-              [(ngModel)]="name" 
-              name="name" 
-              class="form-control" 
-              required 
-              placeholder="VD: Nguyễn Văn A"
-            >
-          </div>
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Họ và tên</mat-label>
+            <input matInput type="text" formControlName="name" placeholder="VD: Nguyễn Văn A" autocomplete="name">
+            @if (form.controls.name.hasError('required') && form.controls.name.touched) {
+              <mat-error>Vui lòng nhập họ tên.</mat-error>
+            }
+          </mat-form-field>
 
-          <div class="form-group">
-            <label for="reg-email">Địa chỉ Email <span class="req">*</span></label>
-            <input 
-              type="email" 
-              id="reg-email" 
-              [(ngModel)]="email" 
-              name="email" 
-              class="form-control" 
-              required 
-              placeholder="VD: nguyenvana@gmail.com"
-            >
-          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Địa chỉ Email</mat-label>
+            <input matInput type="email" formControlName="email" placeholder="VD: nguyenvana@gmail.com" autocomplete="email">
+            @if (form.controls.email.hasError('required') && form.controls.email.touched) {
+              <mat-error>Vui lòng nhập email.</mat-error>
+            }
+            @if (form.controls.email.hasError('email') && form.controls.email.touched) {
+              <mat-error>Email không đúng định dạng.</mat-error>
+            }
+          </mat-form-field>
 
-          <div class="form-group">
-            <label for="reg-phone">Số điện thoại liên hệ</label>
-            <input 
-              type="text" 
-              id="reg-phone" 
-              [(ngModel)]="phone" 
-              name="phone" 
-              class="form-control" 
-              placeholder="VD: 0901 234 567"
-            >
-          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Số điện thoại liên hệ</mat-label>
+            <input matInput type="text" formControlName="phone" placeholder="VD: 0901 234 567" autocomplete="tel">
+          </mat-form-field>
 
-          <div class="form-group">
-            <label for="reg-password">Mật khẩu bảo mật <span class="req">*</span></label>
-            <input 
-              type="password" 
-              id="reg-password" 
-              [(ngModel)]="password" 
-              name="password" 
-              class="form-control" 
-              required 
-              minlength="6" 
-              placeholder="Tối thiểu 6 ký tự"
-            >
-          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Mật khẩu bảo mật</mat-label>
+            <input matInput [type]="showPassword ? 'text' : 'password'" formControlName="password" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password">
+            <button mat-icon-button matSuffix type="button" (click)="showPassword = !showPassword" [attr.aria-label]="'Hiện/ẩn mật khẩu'">
+              <mat-icon>{{ showPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+            @if (form.controls.password.hasError('required') && form.controls.password.touched) {
+              <mat-error>Vui lòng nhập mật khẩu.</mat-error>
+            }
+            @if (form.controls.password.hasError('minlength') && form.controls.password.touched) {
+              <mat-error>Mật khẩu phải có tối thiểu 6 ký tự.</mat-error>
+            }
+          </mat-form-field>
 
-          <button type="submit" class="btn btn-gold btn-lg btn-block" [disabled]="loading || !name || !email || !password">
-            {{ loading ? 'Đang tạo tài khoản...' : 'Hoàn tất Đăng ký & Đăng nhập' }}
+          <button mat-raised-button color="primary" type="submit" class="btn-block submit-btn" [disabled]="loading || form.invalid">
+            @if (loading) {
+              <mat-spinner diameter="20" class="btn-spinner"></mat-spinner>
+              <span>Đang tạo tài khoản...</span>
+            } @else {
+              <span>Hoàn tất Đăng ký & Đăng nhập</span>
+            }
           </button>
         </form>
 
@@ -96,19 +95,31 @@ import { AuthService } from '../../services/auth.service';
   styleUrls: ['./register.component.scss']
 })
 export class RegisterComponent {
-  name = '';
-  email = '';
-  phone = '';
-  password = '';
+  private fb = inject(FormBuilder);
+  private auth = inject(AuthService);
+  private router = inject(Router);
+
+  form = this.fb.nonNullable.group({
+    name: ['', Validators.required],
+    email: ['', [Validators.required, Validators.email]],
+    phone: [''],
+    password: ['', [Validators.required, Validators.minLength(6)]],
+  });
+
   error = '';
   loading = false;
-
-  constructor(private auth: AuthService, private router: Router) {}
+  showPassword = false;
 
   onSubmit(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
     this.loading = true;
     this.error = '';
-    this.auth.register(this.name, this.email, this.password, this.phone).subscribe({
+    const { name, email, password, phone } = this.form.getRawValue();
+    this.auth.register(name, email, password, phone).subscribe({
       next: () => {
         this.router.navigate(['/']);
       },

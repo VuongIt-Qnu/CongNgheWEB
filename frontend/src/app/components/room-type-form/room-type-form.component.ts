@@ -1,13 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
 import { RoomTypeService } from '../../services/room-type.service';
 
 @Component({
   selector: 'app-room-type-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   template: `
     <div class="form-container">
       <div class="form-header">
@@ -16,37 +19,25 @@ import { RoomTypeService } from '../../services/room-type.service';
         <p>Cấu hình tên gọi phân khúc phòng và mô tả tiện ích tiêu chuẩn áp dụng.</p>
       </div>
 
-      <form (ngSubmit)="onSubmit()" class="form-card-main">
-        <div class="form-group">
-          <label for="name">Tên phân khúc / Loại phòng <span class="required">*</span></label>
-          <input 
-            id="name" 
-            type="text" 
-            [(ngModel)]="item.name" 
-            name="name" 
-            class="form-control" 
-            placeholder="VD: Phòng Hướng Biển, Phòng Suite Sang Trọng..." 
-            required
-          >
-        </div>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="form-card-main">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Tên phân khúc / Loại phòng</mat-label>
+          <input matInput type="text" formControlName="name" placeholder="VD: Phòng Hướng Biển, Phòng Suite Sang Trọng...">
+          @if (form.controls.name.hasError('required') && form.controls.name.touched) {
+            <mat-error>Vui lòng nhập tên loại phòng.</mat-error>
+          }
+        </mat-form-field>
 
-        <div class="form-group">
-          <label for="description">Mô tả đặc điểm & Tiện ích tiêu chuẩn</label>
-          <textarea 
-            id="description" 
-            [(ngModel)]="item.description" 
-            name="description" 
-            rows="4" 
-            class="form-control" 
-            placeholder="VD: Không gian rộng rãi, ban công view trực diện biển, minibar miễn phí..."
-          ></textarea>
-        </div>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Mô tả đặc điểm & Tiện ích tiêu chuẩn</mat-label>
+          <textarea matInput formControlName="description" rows="4" placeholder="VD: Không gian rộng rãi, ban công view trực diện biển, minibar miễn phí..."></textarea>
+        </mat-form-field>
 
         <div class="form-actions-row">
-          <button type="submit" class="btn btn-gold btn-lg" [disabled]="!item.name">
+          <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid">
             {{ isEdit ? '💾 Lưu thay đổi' : '✨ Tạo loại phòng mới' }}
           </button>
-          <button type="button" class="btn btn-secondary btn-lg" (click)="router.navigate(['/room-types'])">
+          <button mat-stroked-button type="button" (click)="router.navigate(['/room-types'])">
             Hủy thao tác
           </button>
         </div>
@@ -56,7 +47,13 @@ import { RoomTypeService } from '../../services/room-type.service';
   styleUrls: ['./room-type-form.component.scss']
 })
 export class RoomTypeFormComponent implements OnInit {
-  item: any = { name: '', description: '' };
+  private fb = inject(FormBuilder);
+
+  form = this.fb.nonNullable.group({
+    name: ['', Validators.required],
+    description: [''],
+  });
+
   isEdit = false;
   id = 0;
 
@@ -71,12 +68,20 @@ export class RoomTypeFormComponent implements OnInit {
     if (p) {
       this.isEdit = true;
       this.id = +p;
-      this.service.getById(this.id).subscribe(d => this.item = d);
+      this.service.getById(this.id).subscribe(d => this.form.patchValue({
+        name: d.name,
+        description: d.description ?? '',
+      }));
     }
   }
 
   onSubmit(): void {
-    const o = this.isEdit ? this.service.update(this.id, this.item) : this.service.create(this.item);
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    const value = this.form.getRawValue();
+    const o = this.isEdit ? this.service.update(this.id, value) : this.service.create(value);
     o.subscribe(() => this.router.navigate(['/room-types']));
   }
 }

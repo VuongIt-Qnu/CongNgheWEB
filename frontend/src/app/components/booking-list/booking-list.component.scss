@@ -1,3 +1,5 @@
+@use '../../../styles/mat-table-theme' as tableTheme;
+
 .page-container {
   display: flex;
   flex-direction: column;
@@ -29,58 +31,71 @@
   }
 }
 
-// ── STATUS SUMMARY PILLS ──
+// ── STATUS SUMMARY PILLS (mat-button-toggle-group) ──
 .status-summary-bar {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  border: none;
+  background: transparent;
 
-  .status-pill {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    padding: 10px 18px;
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13.5px;
-    color: var(--text-body);
-    cursor: pointer;
-    transition: var(--transition);
+  ::ng-deep {
+    .mat-button-toggle {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle) !important;
+      border-radius: var(--radius-md) !important;
+      overflow: hidden;
+      transition: var(--transition);
 
-    strong {
-      color: var(--text-main);
-      background: var(--bg-surface-light);
-      padding: 2px 8px;
-      border-radius: var(--radius-full);
-      font-size: 12px;
-    }
-
-    &:hover {
-      border-color: rgba(198, 169, 106, 0.4);
-      background: var(--bg-surface-light);
-    }
-
-    &.active {
-      border-color: var(--gold);
-      background: var(--gold-glow);
-      color: var(--gold);
-      font-weight: 600;
-
-      strong {
-        background: var(--gold);
-        color: #06101e;
+      &:hover {
+        border-color: rgba(198, 169, 106, 0.4) !important;
+        background: var(--bg-surface-light);
       }
     }
 
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      &.green { background: var(--status-success); }
-      &.orange { background: var(--status-warning); }
-      &.blue { background: var(--status-info); }
+    .mat-button-toggle-label-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 18px;
+      line-height: 40px;
+      font-size: 13.5px;
+      color: var(--text-body);
+
+      strong {
+        color: var(--text-main);
+        background: var(--bg-surface-light);
+        padding: 2px 8px;
+        border-radius: var(--radius-full);
+        font-size: 12px;
+      }
     }
+
+    .mat-button-toggle-checked {
+      border-color: var(--gold) !important;
+      background: var(--gold-glow) !important;
+
+      .mat-button-toggle-label-content {
+        color: var(--gold);
+        font-weight: 600;
+
+        strong {
+          background: var(--gold);
+          color: #06101e;
+        }
+      }
+    }
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    &.green  { background: var(--status-success); }
+    &.orange { background: var(--status-warning); }
+    &.blue   { background: var(--status-info); }
+    &.red    { background: var(--status-danger); }
+    &.gray   { background: #94a3b8; }
   }
 }
 
@@ -90,47 +105,9 @@
   gap: 16px;
   align-items: center;
 
-  .search-input-wrap {
+  .search-field {
     flex: 1;
     max-width: 460px;
-    position: relative;
-    display: flex;
-    align-items: center;
-
-    .search-icon {
-      position: absolute;
-      left: 14px;
-      color: var(--text-dim);
-      font-size: 14px;
-    }
-
-    input {
-      width: 100%;
-      padding: 11px 36px 11px 40px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      color: #fff;
-      font-size: 14px;
-      transition: var(--transition);
-
-      &:focus {
-        border-color: var(--gold);
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(198, 169, 106, 0.12);
-      }
-    }
-
-    .btn-clear {
-      position: absolute;
-      right: 12px;
-      background: transparent;
-      border: none;
-      color: var(--text-dim);
-      cursor: pointer;
-      font-size: 12px;
-      &:hover { color: #fff; }
-    }
   }
 }
 
@@ -141,6 +118,7 @@
   border-radius: var(--radius-lg);
   overflow-x: auto;
   box-shadow: var(--shadow-sm);
+  @include tableTheme.mat-table-skin;
 }
 
 .booking-code {
@@ -202,18 +180,88 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
-.empty-table-cell {
-  padding: 48px !important;
+.empty-state {
+  padding: 48px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  span { font-size: 32px; }
+}
 
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    color: var(--text-muted);
-    span { font-size: 32px; }
-  }
+// ── ROW ACTION BUTTONS theo trạng thái (mat-button + màu tuỳ ngữ nghĩa) ──
+button.btn-action-confirm {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+  &:hover { background: rgba(34, 197, 94, 0.25); }
+}
+
+button.btn-action-checkin {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  &:hover { background: rgba(59, 130, 246, 0.25); }
+}
+
+button.btn-action-checkout {
+  background: rgba(168, 85, 247, 0.15);
+  color: #d8b4fe;
+  &:hover { background: rgba(168, 85, 247, 0.25); }
+}
+
+button.btn-action-noshow {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
+  &:hover { background: rgba(245, 158, 11, 0.25); }
+}
+
+button.btn-action-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  &:hover { background: rgba(239, 68, 68, 0.22); }
+}
+
+button.btn-pay {
+  background: rgba(198, 169, 106, 0.15);
+  color: var(--gold);
+  &:hover { background: rgba(198, 169, 106, 0.25); }
+}
+
+// ── Badge bổ sung — các trạng thái chưa có trong .badge dùng chung (styles.scss) ──
+:host ::ng-deep .badge.no_show {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  &::before { background: #fbbf24; }
+}
+
+.payment-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+// Payment status badge (Booking.paymentStatus): unpaid/partial/paid
+.badge.unpaid {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  &::before { background: #94a3b8; }
+}
+.badge.partial {
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  &::before { background: var(--status-warning); }
+}
+.badge.paid {
+  background: var(--status-success-bg);
+  color: var(--status-success);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  &::before { background: var(--status-success); }
 }

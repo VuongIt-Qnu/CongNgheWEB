@@ -35,12 +35,17 @@
   gap: 24px;
 }
 
-.type-card {
+// mat-card mặc định có padding/box-shadow/border-radius riêng theo theme Material —
+// override lại bằng đúng token thiết kế resort (--bg-surface, --radius-lg...) để giữ nguyên giao diện gốc.
+mat-card.type-card {
+  --mat-card-elevated-container-shape: var(--radius-lg);
+  --mat-card-outlined-container-shape: var(--radius-lg);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+  padding: 0;
   display: flex;
   flex-direction: column;
   transition: var(--transition);
